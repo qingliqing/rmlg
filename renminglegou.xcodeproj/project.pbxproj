@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		285DD3872E4DC36D007A8C29 /* Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 285DD3862E4DC36D007A8C29 /* Alamofire.framework */; };
+		36FD593CD38CD12C5217248E /* Pods_renminglegou.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3D8EC9276D64B64D7E96D0D7 /* Pods_renminglegou.framework */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		2843750F2E4A150200A1CCCD /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -27,11 +32,28 @@
 		284374FE2E4A150000A1CCCD /* renminglegou.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = renminglegou.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2843750E2E4A150200A1CCCD /* renminglegouTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = renminglegouTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		284375182E4A150200A1CCCD /* renminglegouUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = renminglegouUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		285DD3862E4DC36D007A8C29 /* Alamofire.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Alamofire.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		3D8EC9276D64B64D7E96D0D7 /* Pods_renminglegou.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_renminglegou.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		5663AC2A973D8DA97F66D2DF /* Pods-renminglegou.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-renminglegou.release.xcconfig"; path = "Target Support Files/Pods-renminglegou/Pods-renminglegou.release.xcconfig"; sourceTree = "<group>"; };
+		F99969A4D4CB15309339B9C6 /* Pods-renminglegou.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-renminglegou.debug.xcconfig"; path = "Target Support Files/Pods-renminglegou/Pods-renminglegou.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		2859B46A2E4AF96600F65870 /* Exceptions for "renminglegou" folder in "renminglegou" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 284374FD2E4A150000A1CCCD /* renminglegou */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		284375002E4A150000A1CCCD /* renminglegou */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				2859B46A2E4AF96600F65870 /* Exceptions for "renminglegou" folder in "renminglegou" target */,
+			);
 			path = renminglegou;
 			sourceTree = "<group>";
 		};
@@ -52,6 +74,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				36FD593CD38CD12C5217248E /* Pods_renminglegou.framework in Frameworks */,
+				285DD3872E4DC36D007A8C29 /* Alamofire.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -79,6 +103,8 @@
 				284375112E4A150200A1CCCD /* renminglegouTests */,
 				2843751B2E4A150200A1CCCD /* renminglegouUITests */,
 				284374FF2E4A150000A1CCCD /* Products */,
+				3953089D4791C5AD5AFEBE05 /* Pods */,
+				4C71423C73CA43FC85DF8CB9 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -92,6 +118,24 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		3953089D4791C5AD5AFEBE05 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				F99969A4D4CB15309339B9C6 /* Pods-renminglegou.debug.xcconfig */,
+				5663AC2A973D8DA97F66D2DF /* Pods-renminglegou.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		4C71423C73CA43FC85DF8CB9 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				285DD3862E4DC36D007A8C29 /* Alamofire.framework */,
+				3D8EC9276D64B64D7E96D0D7 /* Pods_renminglegou.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -99,9 +143,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 284375222E4A150200A1CCCD /* Build configuration list for PBXNativeTarget "renminglegou" */;
 			buildPhases = (
+				FBA0A6B662D9C30F798CB9C8 /* [CP] Check Pods Manifest.lock */,
 				284374FA2E4A150000A1CCCD /* Sources */,
 				284374FB2E4A150000A1CCCD /* Frameworks */,
 				284374FC2E4A150000A1CCCD /* Resources */,
+				A0DBABA33DC8FA73782281C3 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -111,8 +157,6 @@
 				284375002E4A150000A1CCCD /* renminglegou */,
 			);
 			name = renminglegou;
-			packageProductDependencies = (
-			);
 			productName = renminglegou;
 			productReference = 284374FE2E4A150000A1CCCD /* renminglegou.app */;
 			productType = "com.apple.product-type.application";
@@ -134,8 +178,6 @@
 				284375112E4A150200A1CCCD /* renminglegouTests */,
 			);
 			name = renminglegouTests;
-			packageProductDependencies = (
-			);
 			productName = renminglegouTests;
 			productReference = 2843750E2E4A150200A1CCCD /* renminglegouTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -157,8 +199,6 @@
 				2843751B2E4A150200A1CCCD /* renminglegouUITests */,
 			);
 			name = renminglegouUITests;
-			packageProductDependencies = (
-			);
 			productName = renminglegouUITests;
 			productReference = 284375182E4A150200A1CCCD /* renminglegouUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
@@ -230,6 +270,48 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A0DBABA33DC8FA73782281C3 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-renminglegou/Pods-renminglegou-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-renminglegou/Pods-renminglegou-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-renminglegou/Pods-renminglegou-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		FBA0A6B662D9C30F798CB9C8 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-renminglegou-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		284374FA2E4A150000A1CCCD /* Sources */ = {
@@ -390,6 +472,7 @@
 		};
 		284375232E4A150200A1CCCD /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F99969A4D4CB15309339B9C6 /* Pods-renminglegou.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -398,17 +481,25 @@
 				DEVELOPMENT_ASSET_PATHS = "\"renminglegou/Preview Content\"";
 				DEVELOPMENT_TEAM = NBL9HM43WZ;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = renminglegou/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-framework",
+					"\"Alamofire\"",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.sxw.renminglegou;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -419,6 +510,7 @@
 		};
 		284375242E4A150200A1CCCD /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5663AC2A973D8DA97F66D2DF /* Pods-renminglegou.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -427,17 +519,25 @@
 				DEVELOPMENT_ASSET_PATHS = "\"renminglegou/Preview Content\"";
 				DEVELOPMENT_TEAM = NBL9HM43WZ;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = renminglegou/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-framework",
+					"\"Alamofire\"",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.sxw.renminglegou;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

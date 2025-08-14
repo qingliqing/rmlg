@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务中心测试页面</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .content {
+            padding: 30px 20px;
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+        }
+        
+        .test-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-left: 4px solid #667eea;
+            padding-left: 10px;
+        }
+        
+        .button-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .test-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .test-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .test-btn:active {
+            transform: translateY(0);
+        }
+        
+        .special-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            grid-column: 1 / -1;
+            font-size: 16px;
+            padding: 20px;
+        }
+        
+        .result {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            border-left: 4px solid #28a745;
+        }
+        
+        .result h4 {
+            color: #28a745;
+            margin-bottom: 8px;
+        }
+        
+        .result p {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .info-box h4 {
+            color: #1976d2;
+            margin-bottom: 8px;
+        }
+        
+        .info-box p {
+            color: #555;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 10px;
+            background: #fff3cd;
+            border-radius: 8px;
+            color: #856404;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 WebView 测试中心</h1>
+            <p>模拟 iOS App 中的 H5 交互功能</p>
+        </div>
+        
+        <div class="content">
+            <div class="status" id="status">
+                🔗 WebView 已连接，准备测试...
+            </div>
+            
+            <div class="test-section">
+                <h3>🎯 真实调用方式测试</h3>
+                <div class="button-grid">
+                    <button class="test-btn special-btn" onclick="openTaskCenter()">
+                        🏆 打开任务中心
+                    </button>
+                </div>
+                <p style="color: #666; font-size: 12px; text-align: center; margin-top: 10px;">
+                    模拟：window.webkit.messageHandlers.openTaskCenter.postMessage(uni.getStorageSync('token'))
+                </p>
+            </div>
+            
+            <div class="test-section">
+                <h3>📱 Token 管理测试</h3>
+                <div class="button-grid">
+                    <button class="test-btn" onclick="showCurrentToken()">
+                        🔑 查看当前 Token
+                    </button>
+                    <button class="test-btn" onclick="refreshToken()">
+                        🔄 刷新 Token
+                    </button>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <h3>🚀 其他功能测试</h3>
+                <div class="button-grid">
+                    <button class="test-btn" onclick="openAiSports()">
+                        🏃‍♂️ AI 运动
+                    </button>
+                    <button class="test-btn" onclick="openChatPage()">
+                        💬 聊天页面
+                    </button>
+                    <button class="test-btn" onclick="shareVideo()">
+                        📹 分享视频
+                    </button>
+                    <button class="test-btn" onclick="getUserId()">
+                        👤 获取用户ID
+                    </button>
+                </div>
+            </div>
+            
+            <div class="test-section">
+                <h3>🔧 系统功能</h3>
+                <div class="button-grid">
+                    <button class="test-btn" onclick="triggerLogin()">
+                        🔐 模拟登录
+                    </button>
+                    <button class="test-btn" onclick="triggerLogout()">
+                        🚪 模拟登出
+                    </button>
+                    <button class="test-btn" onclick="jumpToAppStore()">
+                        🏪 跳转应用商店
+                    </button>
+                    <button class="test-btn" onclick="finishPage()">
+                        ❌ 关闭页面
+                    </button>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <h4>💡 使用说明</h4>
+                <p>这个页面模拟了你的 Flutter WebView 中的各种 H5 交互功能。点击按钮会调用对应的 JavaScript 方法，这些方法会被你的 iOS 应用接收并处理。</p>
+            </div>
+            
+            <div class="result" id="result" style="display: none;">
+                <h4>📋 操作结果</h4>
+                <p id="resultText">等待操作...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 检查是否在 WebView 环境中
+        function isInWebView() {
+            return window.webkit && window.webkit.messageHandlers;
+        }
+        
+        // 更新状态显示
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            const icons = {
+                'info': '🔗',
+                'success': '✅',
+                'error': '❌',
+                'warning': '⚠️'
+            };
+            status.textContent = `${icons[type]} ${message}`;
+            status.className = 'status ' + type;
+        }
+        
+        // 显示结果
+        function showResult(action, data = null) {
+            const result = document.getElementById('result');
+            const resultText = document.getElementById('resultText');
+            
+            let message = `调用了 ${action} 功能`;
+            if (data) {
+                message += `，参数：${JSON.stringify(data)}`;
+            }
+            
+            resultText.textContent = message;
+            result.style.display = 'block';
+            
+            // 3秒后隐藏结果
+            setTimeout(() => {
+                result.style.display = 'none';
+            }, 3000);
+        }
+        
+        // 模拟 uni-app 的存储 API
+        const uni = {
+            getStorageSync: function(key) {
+                const mockData = {
+                    'token': 'mock_token_123456789',
+                    'userId': 'mock_user_12345',
+                    'userInfo': JSON.stringify({
+                        id: 'mock_user_12345',
+                        name: '测试用户',
+                        avatar: 'https://example.com/avatar.jpg'
+                    }),
+                    'appVersion': '1.0.0'
+                };
+                return mockData[key] || '';
+            },
+            setStorageSync: function(key, value) {
+                console.log(`模拟存储: ${key} = ${value}`);
+            }
+        };
+        
+        // 初始化一些测试数据
+        uni.setStorageSync('token', 'mock_token_123456789');
+        uni.setStorageSync('userId', 'mock_user_12345');
+        
+        // 安全调用 WebKit 方法（兼容原始方式）
+        function callNative(handlerName, data = {}) {
+            if (isInWebView()) {
+                try {
+                    window.webkit.messageHandlers[handlerName].postMessage(data);
+                    updateStatus(`成功调用 ${handlerName}`, 'success');
+                    showResult(handlerName, data);
+                } catch (error) {
+                    updateStatus(`调用 ${handlerName} 失败: ${error.message}`, 'error');
+                    console.error('调用失败:', error);
+                }
+            } else {
+                updateStatus(`模拟调用 ${handlerName}（非 WebView 环境）`, 'warning');
+                showResult(handlerName + '（模拟）', data);
+            }
+        }
+        
+        // 直接调用方式（模拟前端真实调用）
+        function directCall(handlerName, data) {
+            if (isInWebView()) {
+                try {
+                    window.webkit.messageHandlers[handlerName].postMessage(data);
+                    updateStatus(`直接调用 ${handlerName} 成功`, 'success');
+                    showResult(`${handlerName}（直接调用）`, data);
+                } catch (error) {
+                    updateStatus(`直接调用 ${handlerName} 失败: ${error.message}`, 'error');
+                    console.error('直接调用失败:', error);
+                }
+            } else {
+                updateStatus(`模拟直接调用 ${handlerName}（非 WebView 环境）`, 'warning');
+                showResult(`${handlerName}（直接调用模拟）`, data);
+            }
+        }
+        
+        // 任务中心 - 按照前端真实调用方式
+        function openTaskCenter() {
+            // 方式1：按照前端的调用方式
+            const token = uni.getStorageSync('token');
+            if (isInWebView() && window.webkit.messageHandlers.openTaskCenter) {
+                window.webkit.messageHandlers.openTaskCenter.postMessage(token);
+                updateStatus(`调用任务中心成功，token: ${token}`, 'success');
+                showResult('openTaskCenter（真实调用方式）', token);
+            } else {
+                updateStatus(`模拟调用任务中心，token: ${token}`, 'warning');
+                showResult('openTaskCenter（模拟真实调用）', token);
+            }
+        }
+        
+        // AI 运动功能 - 使用 uni-app 方式
+        function openAiSports() {
+            const token = uni.getStorageSync('token');
+            const userId = uni.getStorageSync('userId');
+            
+            // 方式1：直接传 token（如果前端也是这样调用）
+            if (isInWebView() && window.webkit.messageHandlers.openAiSports) {
+                window.webkit.messageHandlers.openAiSports.postMessage(token);
+                updateStatus(`调用 AI 运动成功`, 'success');
+                showResult('openAiSports（真实调用）', token);
+            } else {
+                updateStatus(`模拟调用 AI 运动`, 'warning');
+                showResult('openAiSports（模拟）', token);
+            }
+        }
+        
+        // 聊天页面 - 使用 uni-app 方式
+        function openChatPage() {
+            const token = uni.getStorageSync('token');
+            
+            if (isInWebView() && window.webkit.messageHandlers.openChatPage) {
+                window.webkit.messageHandlers.openChatPage.postMessage(token);
+                updateStatus(`调用聊天页面成功`, 'success');
+                showResult('openChatPage（真实调用）', token);
+            } else {
+                updateStatus(`模拟调用聊天页面`, 'warning');
+                showResult('openChatPage（模拟）', token);
+            }
+        }
+        
+        // 分享视频 - 使用 uni-app 方式
+        function shareVideo() {
+            const token = uni.getStorageSync('token');
+            
+            if (isInWebView() && window.webkit.messageHandlers.shareAiVideo) {
+                window.webkit.messageHandlers.shareAiVideo.postMessage(token);
+                updateStatus(`调用分享视频成功`, 'success');
+                showResult('shareAiVideo（真实调用）', token);
+            } else {
+                updateStatus(`模拟调用分享视频`, 'warning');
+                showResult('shareAiVideo（模拟）', token);
+            }
+        }
+        
+        // 获取用户ID - 使用 uni-app 方式
+        function getUserId() {
+            const token = uni.getStorageSync('token');
+            
+            if (isInWebView() && window.webkit.messageHandlers.getUserId) {
+                window.webkit.messageHandlers.getUserId.postMessage(token);
+                updateStatus(`调用获取用户ID成功`, 'success');
+                showResult('getUserId（真实调用）', token);
+            } else {
+                updateStatus(`模拟调用获取用户ID`, 'warning');
+                showResult('getUserId（模拟）', token);
+            }
+        }
+        
+        // Token 管理功能
+        function showCurrentToken() {
+            const token = uni.getStorageSync('token');
+            const userId = uni.getStorageSync('userId');
+            updateStatus(`当前 Token: ${token.substring(0, 20)}...`, 'info');
+            showResult('当前存储信息', { token, userId });
+        }
+        
+        function refreshToken() {
+            const newToken = 'refresh_token_' + Date.now();
+            uni.setStorageSync('token', newToken);
+            updateStatus(`Token 已刷新`, 'success');
+            showResult('Token 刷新', { newToken });
+        }
+        
+        // 登录事件 - 使用 uni-app 方式
+        function triggerLogin() {
+            const token = uni.getStorageSync('token');
+            const userInfo = {
+                token: token,
+                userId: uni.getStorageSync('userId'),
+                loginTime: Date.now()
+            };
+            
+            if (isInWebView() && window.webkit.messageHandlers.onLoginEvent) {
+                window.webkit.messageHandlers.onLoginEvent.postMessage(userInfo);
+                updateStatus(`触发登录事件成功`, 'success');
+                showResult('onLoginEvent（真实调用）', userInfo);
+            } else {
+                updateStatus(`模拟触发登录事件`, 'warning');
+                showResult('onLoginEvent（模拟）', userInfo);
+            }
+        }
+        
+        // 登出事件 - 直接调用（通常不需要参数）
+        function triggerLogout() {
+            if (isInWebView() && window.webkit.messageHandlers.onLogoutEvent) {
+                window.webkit.messageHandlers.onLogoutEvent.postMessage('');
+                updateStatus(`触发登出事件成功`, 'success');
+                showResult('onLogoutEvent（真实调用）', '');
+            } else {
+                updateStatus(`模拟触发登出事件`, 'warning');
+                showResult('onLogoutEvent（模拟）', '');
+            }
+        }
+        
+        // 跳转 App Store - 使用 uni-app 方式
+        function jumpToAppStore() {
+            const appInfo = {
+                appId: "123456789",
+                from: "webview",
+                timestamp: Date.now()
+            };
+            
+            if (isInWebView() && window.webkit.messageHandlers.jumpToAppStore) {
+                window.webkit.messageHandlers.jumpToAppStore.postMessage(appInfo);
+                updateStatus(`跳转应用商店成功`, 'success');
+                showResult('jumpToAppStore（真实调用）', appInfo);
+            } else {
+                updateStatus(`模拟跳转应用商店`, 'warning');
+                showResult('jumpToAppStore（模拟）', appInfo);
+            }
+        }
+        
+        // 关闭页面 - 直接调用
+        function finishPage() {
+            if (isInWebView() && window.webkit.messageHandlers.onFinishPage) {
+                window.webkit.messageHandlers.onFinishPage.postMessage('');
+                updateStatus(`关闭页面调用成功`, 'success');
+                showResult('onFinishPage（真实调用）', '');
+            } else {
+                updateStatus(`模拟关闭页面`, 'warning');
+                showResult('onFinishPage（模拟）', '');
+            }
+        }
+        
+        // 页面加载完成时检查环境
+        document.addEventListener('DOMContentLoaded', function() {
+            if (isInWebView()) {
+                updateStatus('WebView 环境检测成功，可以正常测试', 'success');
+            } else {
+                updateStatus('当前在浏览器中预览，实际功能需要在 WebView 中测试', 'warning');
+            }
+        });
+        
+        // 动态更新页面标题（测试标题更新功能）
+        let titleCounter = 0;
+        setInterval(() => {
+            titleCounter++;
+            if (titleCounter % 10 === 0) {
+                document.title = `任务中心测试页面 (${titleCounter})`;
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

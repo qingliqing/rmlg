@@ -8,14 +8,28 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var userModel = UserModel.shared
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        if let localPath = Bundle.main.path(forResource: "webview_test", ofType: "html") {
+            let localURL = URL(fileURLWithPath: localPath)
+            
+            WebViewPage(
+                url: localURL,
+                defaultTitle: "任务中心测试"
+            )
+        } else {
+            // 备用：使用原来的网络 URL
+            WebViewPage(
+                url: URL(string: "https://your-original-url.com")!,
+                defaultTitle: "原始页面"
+            )
         }
-        .padding()
+//        
+//        WebViewPage(
+//            url: URL(string: Constants.API.baseWebURL)!,
+//            defaultTitle: ""
+//        )
     }
 }
 
