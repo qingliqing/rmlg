@@ -59,11 +59,15 @@
 		};
 		284375112E4A150200A1CCCD /* renminglegouTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = renminglegouTests;
 			sourceTree = "<group>";
 		};
 		2843751B2E4A150200A1CCCD /* renminglegouUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = renminglegouUITests;
 			sourceTree = "<group>";
 		};
@@ -148,6 +152,7 @@
 				284374FB2E4A150000A1CCCD /* Frameworks */,
 				284374FC2E4A150000A1CCCD /* Resources */,
 				A0DBABA33DC8FA73782281C3 /* [CP] Embed Pods Frameworks */,
+				F9C4FB80B41F64A7FC846CCE /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -280,17 +285,30 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-renminglegou/Pods-renminglegou-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-renminglegou/Pods-renminglegou-frameworks-${CONFIGURATION}-output-files.xcfilelist",
 			);
-			outputPaths = (
-			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-renminglegou/Pods-renminglegou-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		F9C4FB80B41F64A7FC846CCE /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-renminglegou/Pods-renminglegou-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-renminglegou/Pods-renminglegou-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-renminglegou/Pods-renminglegou-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		FBA0A6B662D9C30F798CB9C8 /* [CP] Check Pods Manifest.lock */ = {

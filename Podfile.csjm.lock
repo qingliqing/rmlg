@@ -1,0 +1,17 @@
+---
+IS_LOAD_PLUGIN: true
+PLUGIN_VERSION: 0.0.19
+GLOBAL_NOTE:
+  AUTO_LOAD: true
+  AUTO_UPDATE: last
+  LOAD_DETECT: true
+  AUTO_LOAD_WHITELIST: {}
+TARGET_INFO:
+  T-Pods-renminglegou:
+    LABEL: T-Pods-renminglegou
+    IS_RELEASE_TARGET: false
+    GM_INFO:
+      NAME: Ads-CN-Beta/CSJMediation
+      VERSION: 7.1.0.1
+    NOTES_INFO: {}
+RECODER_CHECKSUM: e22a29fe4c6229ea5379e243f2ec5efeec131cd2
