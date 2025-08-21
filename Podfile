@@ -9,7 +9,10 @@ use_gm_adapter_update!
 target 'renminglegou' do
   # 网络库
   pod 'Alamofire', '~> 5.8'
-  pod 'Ads-CN-Beta', '7.1.0.1', :subspecs => ['CSJMediation']
+  pod 'Ads-CN-Beta', '7.1.0.1', :subspecs => ['CSJMediation','BUAdTestMeasurement']
+#  pod 'BUAdTestMeasurement-beta', '7.1.0.1', :configuration => 'Debug'
+
+
   # 引入使用到的ADN SDK，开发者请按需引入
   
   # 设置线上打包tag,该tag不再执行adapter自动更新，此时以adapter自动更新的最后一次结果去加载各adapter的版本

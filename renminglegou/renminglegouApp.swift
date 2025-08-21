@@ -7,6 +7,9 @@
 
 import SwiftUI
 import BUAdSDK
+#if DEBUG
+import BUAdTestMeasurement
+#endif
 
 @main
 struct renminglegouApp: App {
@@ -22,27 +25,37 @@ struct renminglegouApp: App {
     }
     
     private func setupBUAdSDK() {
-        /******************** 初始化 ********************/
+        /************************** 初始化 **************************/
         let configuration = BUAdSDKConfiguration()
+        
         // 使用聚合
         configuration.useMediation = true
         configuration.appID = "5706508"
+        
         // 隐私合规配置
         // 是否限制个性化广告
         configuration.mediation.limitPersonalAds = NSNumber(integerLiteral: 0)
         // 是否限制程序化广告
         configuration.mediation.limitProgrammaticAds = NSNumber(integerLiteral: 0)
         // 是否禁止CAID
-//        configuration.mediation.forbiddenCAID = NSNumber(integerLiteral: 0)
+        // configuration.mediation.forbiddenCAID = NSNumber(integerLiteral: 0)
+        
         // 主题模式
         configuration.themeStatus = NSNumber(integerLiteral: 0)
         
-        // 初始化
+        #if DEBUG
+        // 配置测试工具
+        BUAdTestMeasurementConfiguration().debugMode = true
+        #endif
+        
+        // 初始化 - 注意这里需要传入 configuration
         BUAdSDKManager.start(asyncCompletionHandler:{ success, error in
             if success {
+                print("BUAdSDK 初始化成功")
                 // 处理成功之后的逻辑
+            } else {
+                print("BUAdSDK 初始化失败: \(error?.localizedDescription ?? "未知错误")")
             }
         })
-
     }
 }
