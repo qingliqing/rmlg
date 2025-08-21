@@ -2,3 +2,5 @@ Pods
 renminglegou.xcodeproj/xcuserdata
 renminglegou.xcworkspace/xcuserdata
 Podfile.lock
+.DS_Store
+Podfile.csjm.lock
