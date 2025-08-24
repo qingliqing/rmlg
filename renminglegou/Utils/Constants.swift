@@ -6,22 +6,35 @@
 //
 
 import Foundation
+import UIKit
 
 struct Constants {
-    // API 相关
-    struct API {
-        static let baseURL = "https://api.hzyzzc.cn/"
-        static let baseWebURL = "https://saas.hzyzzc.cn/app/"
-        
-        static let timeout: TimeInterval = 30
-    }
-    
     // UserDefaults Keys
     struct UserDefaultsKeys {
         static let userToken = "user_token"
         static let userId = "user_id"
         static let unreadMessageCount = "unread_message_count"
         static let unlockWatchAd = "unlockWatchAd"
+    }
+    
+    struct DeviceConsts {
+        static var totalHeight: CGFloat {
+            return statusBarHeight + navBarHeight
+        }
+        
+        static var statusBarHeight: CGFloat {
+            let window = UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .first?.windows.first
+            
+            let statusBarHeight = window?.windowScene?.statusBarManager?.statusBarFrame.height ?? 0
+            return statusBarHeight
+        }
+        
+        static var navBarHeight: CGFloat {
+            return 44
+        }
+        
     }
     
     // H5 消息名称
