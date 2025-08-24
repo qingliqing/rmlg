@@ -12,6 +12,19 @@ struct ContentView: View {
     
     var body: some View {
         ZStack {
+            
+            WebViewPage(
+                url: URL(string: NetworkAPI.baseWebURL)!,
+                defaultTitle: ""
+            )
+//            debugView
+        }
+    }
+    
+    
+    var debugView: some View {
+        
+        ZStack {
             // 主要的 WebView 内容
             if let localPath = Bundle.main.path(forResource: "webview_test", ofType: "html") {
                 let localURL = URL(fileURLWithPath: localPath)
@@ -23,8 +36,8 @@ struct ContentView: View {
             } else {
                 // 备用：使用原来的网络 URL
                 WebViewPage(
-                    url: URL(string: "https://your-original-url.com")!,
-                    defaultTitle: "原始页面"
+                    url: URL(string: NetworkAPI.baseWebURL)!,
+                    defaultTitle: ""
                 )
             }
             
@@ -60,11 +73,6 @@ struct ContentView: View {
                 }
             }
         }
-        
-//        WebViewPage(
-//            url: URL(string: Constants.API.baseWebURL)!,
-//            defaultTitle: ""
-//        )
     }
 }
 

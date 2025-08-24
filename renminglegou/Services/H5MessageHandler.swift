@@ -68,9 +68,6 @@ class H5MessageHandler: NSObject {
         case "cleanCache":
             CacheManager.cleanCache()
             completionHandler("true")
-        case "getImNoReadMsgCount":
-            let unreadCount = MessageManager.getUnreadCount()
-            completionHandler("\(unreadCount)")
         default:
             completionHandler("")
         }

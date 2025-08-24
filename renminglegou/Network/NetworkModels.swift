@@ -9,10 +9,9 @@ import Foundation
 
 // MARK: - 网络请求结果
 struct APIResponse<T: Codable>: Codable {
-    let success: Bool
-    let message: String?
+    let msg: String?
+    let code: Int
     let data: T?
-    let code: Int?
 }
 
 // MARK: - 网络错误类型

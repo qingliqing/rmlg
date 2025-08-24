@@ -46,7 +46,6 @@ struct BrandTaskView: View {
     // MARK: - Private Methods
     private func handleBrandTaskAction() {
         guard !isSubmitting else { return }
-        guard let brandInfo = viewModel.brandTaskInfo, !brandInfo.isCompleted else { return }
         
         isSubmitting = true
         

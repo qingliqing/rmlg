@@ -49,11 +49,5 @@ struct SwipeTaskView: View {
         
         isWatchingVideo = true
         
-        // 模拟刷视频过程
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            isWatchingVideo = false
-            // 这里可以调用 viewModel 的相关方法处理刷视频结果
-            viewModel.handleSwipeVideoResult()
-        }
     }
 }

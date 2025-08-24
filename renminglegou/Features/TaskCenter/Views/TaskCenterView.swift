@@ -55,7 +55,6 @@ struct TaskCenterView: View {
         // 设置导航栏样式
         .onAppear {
             setupNavigationBarAppearance()
-            viewModel.loadData()
         }
     }
     

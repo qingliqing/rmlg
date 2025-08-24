@@ -48,7 +48,7 @@ struct WebViewPage: View {
     @ViewBuilder
     private func destinationView(for destination: NavigationDestination) -> some View {
         switch destination {
-        case .taskCenter(let params):
+        case .taskCenter(_):
             TaskCenterView()
         }
     }
