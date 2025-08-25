@@ -20,7 +20,12 @@ struct renminglegouApp: App {
     
     var body: some Scene {
         WindowGroup {
-            SplashView()
+            ZStack {
+                SplashView()
+                // 全局Loading覆盖层
+                PureSwiftUILoadingView()
+            }
+            
         }
     }
     

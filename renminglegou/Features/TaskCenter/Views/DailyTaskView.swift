@@ -55,6 +55,7 @@ struct DailyTaskView: View {
                         }
                     }
                     .disabled(!viewModel.canWatchDailyAd || viewModel.isReceivingTask)
+                    .opacity(viewModel.canWatchDailyAd && !viewModel.isReceivingTask ? 1.0 : 0.6)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
@@ -74,6 +75,23 @@ struct DailyTaskView: View {
                                             .resizable()
                                             .scaledToFit()
                                             .frame(width: 60, height: 80)
+                                    } else {
+                                        // 备用UI - 已完成
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.green.opacity(0.8))
+                                                .frame(width: 60, height: 80)
+                                            
+                                            VStack(spacing: 4) {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .foregroundColor(.white)
+                                                    .font(.title2)
+                                                
+                                                Text("已完成")
+                                                    .font(.system(size: 10, weight: .medium))
+                                                    .foregroundColor(.white)
+                                            }
+                                        }
                                     }
                                 } else if index == currentCount && viewModel.canWatchDailyAd {
                                     // 可观看状态
@@ -82,6 +100,23 @@ struct DailyTaskView: View {
                                             .resizable()
                                             .scaledToFit()
                                             .frame(width: 60, height: 80)
+                                    } else {
+                                        // 备用UI - 可观看
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.yellow.opacity(0.8))
+                                                .frame(width: 60, height: 80)
+                                            
+                                            VStack(spacing: 4) {
+                                                Image(systemName: "play.circle.fill")
+                                                    .foregroundColor(.white)
+                                                    .font(.title2)
+                                                
+                                                Text("可观看")
+                                                    .font(.system(size: 10, weight: .medium))
+                                                    .foregroundColor(.white)
+                                            }
+                                        }
                                     }
                                 } else {
                                     // 锁定状态
@@ -90,6 +125,23 @@ struct DailyTaskView: View {
                                             .resizable()
                                             .scaledToFit()
                                             .frame(width: 60, height: 80)
+                                    } else {
+                                        // 备用UI - 锁定
+                                        ZStack {
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .fill(Color.gray.opacity(0.6))
+                                                .frame(width: 60, height: 80)
+                                            
+                                            VStack(spacing: 4) {
+                                                Image(systemName: "lock.fill")
+                                                    .foregroundColor(.white)
+                                                    .font(.title2)
+                                                
+                                                Text("锁定")
+                                                    .font(.system(size: 10, weight: .medium))
+                                                    .foregroundColor(.white)
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -115,22 +167,60 @@ struct DailyTaskView: View {
                         viewModel.watchDailyTaskAdvertisement()
                     }
                 }) {
-                    ZStack(){
-                        Image("daily_task_btn_bg")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 250, height: 60)
-                        Text("看视频")
-                            .font(.system(size: 28))
-                            .foregroundStyle(.white)
+                    ZStack {
+                        // 背景图片
+                        if let _ = UIImage(named: "daily_task_btn_bg") {
+                            Image("daily_task_btn_bg")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 250, height: 60)
+                        } else {
+                            // 备用按钮样式
+                            RoundedRectangle(cornerRadius: 30)
+                                .fill(
+                                    LinearGradient(
+                                        gradient: Gradient(colors: [Color.blue, Color.purple]),
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .frame(width: 250, height: 60)
+                        }
+                        
+                        // 按钮文字 - 根据状态显示不同内容
+                        Group {
+                            if viewModel.isReceivingTask {
+                                HStack(spacing: 8) {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .scaleEffect(0.8)
+                                    
+                                    Text("领取中...")
+                                        .font(.system(size: 20, weight: .medium))
+                                        .foregroundStyle(.white)
+                                }
+                            } else if !viewModel.canWatchDailyAd {
+                                Text(viewModel.todayAdCount >= 5 ? "今日已完成" : "暂不可用")
+                                    .font(.system(size: 24, weight: .medium))
+                                    .foregroundStyle(.white.opacity(0.7))
+                            } else {
+                                Text("看视频")
+                                    .font(.system(size: 28, weight: .bold))
+                                    .foregroundStyle(.white)
+                            }
+                        }
                     }
                 }
                 .disabled(!viewModel.canWatchDailyAd || viewModel.isReceivingTask)
+                .scaleEffect(viewModel.canWatchDailyAd && !viewModel.isReceivingTask ? 1.0 : 0.95)
+                .animation(.easeInOut(duration: 0.2), value: viewModel.canWatchDailyAd)
+                .animation(.easeInOut(duration: 0.2), value: viewModel.isReceivingTask)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
             }
         }
         .padding(.horizontal, 16)
         .opacity(viewModel.isLoading ? 0.5 : 1.0)
+        .animation(.easeInOut(duration: 0.3), value: viewModel.isLoading)
     }
 }
