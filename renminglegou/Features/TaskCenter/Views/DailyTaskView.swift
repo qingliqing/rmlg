@@ -26,7 +26,8 @@ struct DailyTaskView: View {
                             .font(.system(size: 24, weight: .semibold))
                             .foregroundColor(.white)
                         
-                        Text("看广告赚金币")
+                        // 显示调试信息
+                        Text("看广告赚金币 (\(viewModel.todayAdCount)/\(maxTaskCount))")
                             .font(.system(size: 14))
                             .foregroundColor(.white.opacity(0.7))
                     }
@@ -60,9 +61,9 @@ struct DailyTaskView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
                 
-                // 任务进度
+                // 任务进度 - 使用从接口获取的任务总数
                 HStack(spacing: 15) {
-                    ForEach(0..<5, id: \.self) { index in
+                    ForEach(0..<maxTaskCount, id: \.self) { index in
                         ZStack (alignment: .top){
                             // 根据任务完成状态显示不同图片
                             Group {
@@ -200,7 +201,7 @@ struct DailyTaskView: View {
                                         .foregroundStyle(.white)
                                 }
                             } else if !viewModel.canWatchDailyAd {
-                                Text(viewModel.todayAdCount >= 5 ? "今日已完成" : "暂不可用")
+                                Text(viewModel.todayAdCount >= maxTaskCount ? "今日已完成" : "暂不可用")
                                     .font(.system(size: 24, weight: .medium))
                                     .foregroundStyle(.white.opacity(0.7))
                             } else {
@@ -222,5 +223,13 @@ struct DailyTaskView: View {
         .padding(.horizontal, 16)
         .opacity(viewModel.isLoading ? 0.5 : 1.0)
         .animation(.easeInOut(duration: 0.3), value: viewModel.isLoading)
+        .onReceive(viewModel.$todayAdCount) { newValue in
+                    print("DailyTaskView - 进度更新到: \(newValue)")
+                }
+    }
+    
+    // 获取每日任务的总数量
+    private var maxTaskCount: Int {
+        return viewModel.dailyTask?.totalAdCount ?? 5
     }
 }

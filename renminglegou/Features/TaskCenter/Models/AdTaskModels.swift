@@ -64,3 +64,42 @@ struct TaskDescription: Codable {
     let level4: TaskText?
 }
 
+// 在 AdTask 结构体中添加
+extension AdTask {
+    /// 获取任务总数
+    var totalAdCount: Int {
+        guard let countString = adTotalCount?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !countString.isEmpty,
+              let count = Int(countString) else { return 0 }
+        return count
+    }
+    
+    /// 获取任务类型
+    var taskType: Int {
+        return id ?? 0
+    }
+    
+    /// 是否有跳转链接
+    var hasJumpLink: Bool {
+        return !(jumpLink?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+    }
+}
+
+// 在 TaskText 结构体中添加
+extension TaskText {
+    var displayText: String {
+        return text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+    
+    var displayFontSize: CGFloat {
+        return CGFloat(fontSize ?? 16)
+    }
+}
+
+// 在 TaskDescription 结构体中添加
+extension TaskDescription {
+    var primaryText: String {
+        return level1?.displayText ?? ""
+    }
+}
+

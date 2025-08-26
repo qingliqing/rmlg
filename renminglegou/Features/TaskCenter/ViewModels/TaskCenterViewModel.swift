@@ -91,6 +91,20 @@ class TaskCenterViewModel: ObservableObject {
     
     // MARK: - Setup Methods
     
+    // 添加计算属性
+    var dailyTask: AdTask? {
+        return adConfig?.tasks?.first { $0.id == 1 }
+    }
+
+    var swipeTask: AdTask? {
+        return adConfig?.tasks?.first { $0.id == 2 }
+    }
+
+    var brandTask: AdTask? {
+        return adConfig?.tasks?.first { $0.id == 3 }
+    }
+    
+    
     private func setupRewardAdManager() {
         rewardAdManager.delegate = self
         // 预加载激励广告
@@ -434,7 +448,8 @@ class TaskCenterViewModel: ObservableObject {
     
     /// 每日任务是否可以观看广告
     var canWatchDailyAd: Bool {
-        return todayAdCount < 5 && !loadingManager.isShowingLoading && !isShowingAd
+        guard let task = dailyTask else { return false }
+        return todayAdCount < task.totalAdCount && !loadingManager.isShowingLoading && !isShowingAd
     }
     
     /// 是否正在处理广告相关操作
@@ -516,7 +531,7 @@ extension TaskCenterViewModel: RewardAdManagerDelegate {
     }
     
     nonisolated func rewardAdDidFinishPlaying(error: Error?) {
-        if let error = error {
+        if error != nil {
             Task { @MainActor in
                 isShowingAd = false
                 loadingManager.showError(message: "广告播放失败")

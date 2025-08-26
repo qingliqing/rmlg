@@ -14,7 +14,7 @@ struct TaskCenterView: View {
     
     var body: some View {
         ZStack {
-            // Background image - 修复背景图片显示
+            // Background image
             Image("task_center_bg")
                 .resizable()
                 .scaledToFill()
@@ -31,30 +31,34 @@ struct TaskCenterView: View {
             // Alert overlays
             alertOverlays
         }
-        .padding(.top,Constants.DeviceConsts.totalHeight + 20)
-        // 使用普通标题但放大字体来模拟大标题居中效果
+        .padding(.top, Constants.DeviceConsts.totalHeight + 20)
         .navigationTitle("任务中心")
-        .navigationBarTitleDisplayMode(.inline) // 使用 inline 模式可以居中
-        
-        // 隐藏默认返回按钮，添加自定义返回按钮
+        .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .navigationBarItems(leading:
             Button(action: {
                 presentationMode.wrappedValue.dismiss()
             }) {
-                
                 Image(systemName: "chevron.left")
                     .font(.system(size: 24, weight: .medium))
-                    .frame(width: 32,height: 32)
+                    .frame(width: 32, height: 32)
                     .foregroundColor(.white)
                     .padding(.horizontal, 0)
                     .padding(.vertical, 6)
             }
         )
-        
-        // 设置导航栏样式
         .onAppear {
             setupNavigationBarAppearance()
+            // 设置默认选中的tab
+            if let firstTab = availableTabs.first {
+                selectedTab = firstTab
+            }
+        }
+        .onChange(of: viewModel.isLoading) { _ in
+            // 当任务配置加载完成后，确保选中的tab是有效的
+            if !viewModel.isLoading && !availableTabs.contains(selectedTab), let firstTab = availableTabs.first {
+                selectedTab = firstTab
+            }
         }
     }
     
@@ -62,7 +66,7 @@ struct TaskCenterView: View {
     private var bannerView: some View {
         Image("task_center_bg")
             .resizable()
-            .scaledToFill() // 改为按比例适应
+            .scaledToFill()
             .frame(maxHeight: 160)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .padding(.horizontal, 16)
@@ -70,48 +74,117 @@ struct TaskCenterView: View {
     
     @ViewBuilder
     private var taskContentView: some View {
-         VStack(spacing: 16) {
-            // 自定义 Tab 按钮
-            HStack(spacing: 20) {
-                ForEach(TaskTab.allCases, id: \.self) { tab in
-                    Button(action: {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            selectedTab = tab
+        VStack(spacing: 16) {
+            // 动态生成 Tab 按钮
+            if !availableTabs.isEmpty {
+                HStack(spacing: 20) {
+                    ForEach(availableTabs, id: \.self) { tab in
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedTab = tab
+                            }
+                        }) {
+                            ZStack {
+                                Image(selectedTab == tab ? tab.selectedImageName : tab.normalImageName)
+                                    .resizable()
+                                    .renderingMode(.original)
+                                    .scaledToFit()
+                                
+                                Text(getTabTitle(for: tab))
+                                    .foregroundStyle(.white)
+                            }
                         }
-                    }) {
-                        // 如果图片资源不存在，使用文字作为备选
-                        ZStack(){
-                            
-                            Image(selectedTab == tab ? tab.selectedImageName : tab.normalImageName)
-                                .resizable() // ✅ 第一步：让图片可调整大小
-                                .renderingMode(.original) // ✅ 保持原始渲染
-                                .scaledToFit() // ✅
-                            
-                            
-                            Text(tab.title)
-                                .foregroundStyle(.white)
-                        }
-                        
                     }
                 }
+                .frame(height: 60)
+                .padding(.horizontal, 16)
+                
+                // 动态显示对应的任务内容
+                TabView(selection: $selectedTab) {
+                    ForEach(availableTabs, id: \.self) { tab in
+                        getTaskView(for: tab)
+                            .tag(tab)
+                    }
+                }
+                .frame(height: 300)
+                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                .animation(.easeInOut(duration: 0.3), value: selectedTab)
+            } else {
+                // 加载状态或无数据状态
+                if viewModel.isLoading {
+                    ProgressView("正在加载任务配置...")
+                        .frame(height: 300)
+                        .foregroundColor(.white)
+                } else {
+                    Text("暂无可用任务")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
+                        .frame(height: 300)
+                }
             }
-            .frame(height: 60)
-            .padding(.horizontal, 16)
+        }
+    }
+    
+    // MARK: - Helper Methods
+    
+    /// 获取可用的tab列表（基于任务配置）
+    private var availableTabs: [TaskTab] {
+        guard let tasks = viewModel.adConfig?.tasks else { return [] }
+        
+        let tabs = tasks.compactMap { task -> TaskTab? in
+            switch task.id {
+            case 1: return .daily
+            case 2: return .swipe
+            case 3: return .brand
+            default: return nil
+            }
+        }
+        
+        // 按照任务的sortOrder排序
+        return tabs.sorted { tab1, tab2 in
+            let task1 = viewModel.adConfig?.tasks?.first { getTaskId(for: tab1) == $0.id }
+            let task2 = viewModel.adConfig?.tasks?.first { getTaskId(for: tab2) == $0.id }
             
-            // 使用 TabView 显示内容，但隐藏默认的 tabItem
-            TabView(selection: $selectedTab) {
-                DailyTaskView(viewModel: viewModel)
-                    .tag(TaskTab.daily)
-                
-                SwipeTaskView(viewModel: viewModel)
-                    .tag(TaskTab.swipe)
-                
-                BrandTaskView(viewModel: viewModel)
-                    .tag(TaskTab.brand)
-            }
-            .frame(height: 300) // 设置内容区域高度
-            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never)) // 隐藏页面指示器
-            .animation(.easeInOut(duration: 0.3), value: selectedTab) // 添加切换动画
+            let order1 = task1?.sortOrder ?? Int.max
+            let order2 = task2?.sortOrder ?? Int.max
+            
+            return order1 < order2
+        }
+    }
+    
+    /// 获取tab对应的任务ID
+    private func getTaskId(for tab: TaskTab) -> Int {
+        switch tab {
+        case .daily: return 1
+        case .swipe: return 2
+        case .brand: return 3
+        }
+    }
+    
+    /// 获取tab标题（优先使用配置中的标题）
+    private func getTabTitle(for tab: TaskTab) -> String {
+        let taskId = getTaskId(for: tab)
+        
+        if let task = viewModel.adConfig?.tasks?.first(where: { $0.id == taskId }),
+           let taskName = task.taskName?.displayText,
+           !taskName.isEmpty {
+            return taskName
+        }
+        
+        // 降级使用默认标题
+        return tab.title
+    }
+    
+    /// 获取对应的任务视图
+    @ViewBuilder
+    private func getTaskView(for tab: TaskTab) -> some View {
+        switch tab {
+        case .daily:
+            DailyTaskView(viewModel: viewModel)
+        case .swipe:
+            SwipeTaskView(viewModel: viewModel)
+        case .brand:
+            BrandTaskView(viewModel: viewModel)
         }
     }
     
@@ -120,22 +193,20 @@ struct TaskCenterView: View {
         let appearance = UINavigationBarAppearance()
         appearance.configureWithTransparentBackground()
         
-        // 设置普通标题字体和颜色 - 放大字体来模拟大标题效果
         appearance.titleTextAttributes = [
             .foregroundColor: UIColor.white,
-            .font: UIFont.systemFont(ofSize: 28, weight: .medium) // 放大标题字体
+            .font: UIFont.systemFont(ofSize: 28, weight: .medium)
         ]
         
-        // 应用外观设置
         UINavigationBar.appearance().standardAppearance = appearance
         UINavigationBar.appearance().compactAppearance = appearance
         UINavigationBar.appearance().scrollEdgeAppearance = appearance
     }
     
-    
     // MARK: - Alert Overlays
     @ViewBuilder
     private var alertOverlays: some View {
+        // 可以在这里添加全局的alert或loading视图
         EmptyView()
     }
 }
