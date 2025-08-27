@@ -22,12 +22,14 @@ final class NetworkManager: @unchecked Sendable {
         configuration.timeoutIntervalForRequest = NetworkAPI.timeout
         configuration.timeoutIntervalForResource = NetworkAPI.timeout
         
-        // 创建拦截器处理认证
-        let interceptor = AuthenticationInterceptor()
+        // 拦截器
+        let authInterceptor = AuthenticationInterceptor()
+        let authMonitor = AuthenticationMonitor()
         
         self.session = Session(
             configuration: configuration,
-            interceptor: interceptor
+            interceptor: authInterceptor,
+            eventMonitors: [authMonitor]
         )
     }
     
@@ -183,19 +185,5 @@ final class NetworkManager: @unchecked Sendable {
             parameters: parameters,
             responseType: type
         )
-    }
-}
-
-// MARK: - 认证拦截器（保持不变）
-final class AuthenticationInterceptor: RequestInterceptor, @unchecked Sendable {
-    func adapt(_ urlRequest: URLRequest, for session: Session, completion: @escaping (Result<URLRequest, Error>) -> Void) {
-        var urlRequest = urlRequest
-        
-        // 添加用户令牌（如果存在）
-        if let token = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.userToken) {
-            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        
-        completion(.success(urlRequest))
     }
 }

@@ -50,6 +50,17 @@ struct AdTask: Codable {
     let jumpLink: String?
 }
 
+/// 广告任务进度
+struct AdTaskProgress: Codable {
+    let id: Int?
+    let userId: String?
+    let taskType: Int?
+    let adViewCount: Int?
+    let isCompleted: Bool?
+    let createTime: String?
+    let updateTime: String?
+}
+
 /// 任务文本
 struct TaskText: Codable {
     let text: String?
@@ -63,6 +74,8 @@ struct TaskDescription: Codable {
     let level3: TaskText?
     let level4: TaskText?
 }
+
+// MARK: - Extensions
 
 // 在 AdTask 结构体中添加
 extension AdTask {
@@ -82,6 +95,45 @@ extension AdTask {
     /// 是否有跳转链接
     var hasJumpLink: Bool {
         return !(jumpLink?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+    }
+}
+
+// 在 AdTaskProgress 结构体中添加
+extension AdTaskProgress {
+    /// 获取当前观看次数
+    var currentViewCount: Int {
+        return adViewCount ?? 0
+    }
+    
+    /// 获取任务类型ID
+    var currentTaskType: Int {
+        return taskType ?? 0
+    }
+    
+    /// 获取用户ID
+    var currentUserId: String {
+        return userId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+    
+    /// 是否已完成
+    var completed: Bool {
+        return isCompleted ?? false
+    }
+    
+    /// 格式化创建时间
+    var formattedCreateTime: Date? {
+        guard let createTime = createTime else { return nil }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: createTime)
+    }
+    
+    /// 格式化更新时间
+    var formattedUpdateTime: Date? {
+        guard let updateTime = updateTime else { return nil }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.date(from: updateTime)
     }
 }
 

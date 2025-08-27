@@ -8,13 +8,14 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var authState = AuthenticationState.shared
     @StateObject private var userModel = UserModel.shared
     
     var body: some View {
         ZStack {
-            
+            let rootUrl = authState.isAuthenticated ? NetworkAPI.baseWebURL :NetworkAPI.baseWebURL+NetworkAPI.loginWebURL
             WebViewPage(
-                url: URL(string: NetworkAPI.baseWebURL)!,
+                url: URL(string: rootUrl)!,
                 defaultTitle: ""
             )
 //            debugView
@@ -76,6 +77,3 @@ struct ContentView: View {
     }
 }
 
-#Preview {
-    ContentView()
-}

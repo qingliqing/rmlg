@@ -17,16 +17,27 @@ class UserModel: ObservableObject {
     
     private init() {
         // 从 UserDefaults 恢复登录状态
-        if let savedToken = UserDefaults.standard.string(forKey: "user_token"), !savedToken.isEmpty {
+        if let savedToken = UserDefaults.standard.string(forKey: UserDefaultsKeys.userToken), !savedToken.isEmpty {
             self.token = savedToken
             self.isLoggedIn = true
         }
+        
+        if let savedUserId = UserDefaults.standard.string(forKey: UserDefaultsKeys.userId),
+            !savedUserId.isEmpty {
+            self.userId = savedUserId
+        }
+        
     }
     
     func updateToken(_ newToken: String) {
         token = newToken
         isLoggedIn = !newToken.isEmpty
-        UserDefaults.standard.set(newToken, forKey: "user_token")
+        UserDefaults.standard.set(newToken, forKey: UserDefaultsKeys.userToken)
+    }
+    
+    func updateUserid(_ newUserId: String) {
+        userId = newUserId
+        UserDefaults.standard.set(newUserId, forKey: UserDefaultsKeys.userId)
     }
     
     func logout() {

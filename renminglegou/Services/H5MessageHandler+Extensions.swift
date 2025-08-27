@@ -95,7 +95,7 @@ extension H5MessageHandler {
     
     static func handleGetUserId(_ body: Any) {
         let userId = DataUtil.stringOf(body, defaultValue: "")
-        UserModel.shared.userId = userId
+        UserModel.shared.updateUserid(userId)
     }
     
     static func handleShareWx(_ body: Any, selfVC: UIViewController?) {

@@ -121,7 +121,7 @@ class TaskCenterViewModel: ObservableObject {
             
             async let adConfigTask: () = loadAdConfig()
             async let rewardConfigsTask: () = loadRewardConfigs()
-            async let todayCountTask: () = loadTodayAdCount(taskType: dailyTaskType)
+            async let todayCountTask: () = loadTodayAdCount(taskType: dailyTask?.id ?? dailyTaskType)
             async let currentPointsTask: () = loadCurrentPoints()
             async let maxPointsTask: () = loadMaxPoints()
             async let adRecordsTask: () = loadAdRecords()
@@ -217,7 +217,7 @@ class TaskCenterViewModel: ObservableObject {
             do {
                 // 1. 先领取任务
                 isReceivingTask = true
-                _ = try await taskService.receiveTask(taskType: dailyTaskType)
+                _ = try await taskService.receiveTask(taskType: dailyTask?.id ?? dailyTaskType)
                 isReceivingTask = false
                 
                 // 2. 开始加载广告 - 使用自定义Loading

@@ -140,6 +140,8 @@ private extension RewardAdManager {
         slot.mediation.mutedIfCan = false
         
         let rewardedVideoModel = BURewardedVideoModel()
+        let userId = "ios_\(UserModel.shared.userId)_\(Int64(Date().timeIntervalSince1970 * 1000))"
+        rewardedVideoModel.userId = userId
         let rewardedVideoAd = BUNativeExpressRewardedVideoAd(slot: slot, rewardedVideoModel: rewardedVideoModel)
         rewardedVideoAd.delegate = self
         

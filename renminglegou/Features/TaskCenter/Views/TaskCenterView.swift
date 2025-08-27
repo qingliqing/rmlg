@@ -31,7 +31,7 @@ struct TaskCenterView: View {
             // Alert overlays
             alertOverlays
         }
-        .padding(.top, Constants.DeviceConsts.totalHeight + 20)
+        .padding(.top, DeviceConsts.totalHeight + 20)
         .navigationTitle("任务中心")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)

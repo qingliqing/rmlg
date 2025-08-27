@@ -16,6 +16,8 @@ struct NetworkAPI {
     static let baseURL = "https://api.hzyzzc.cn/"
     /// Web页面基础URL
     static let baseWebURL = "https://saas.hzyzzc.cn/app/"
+    /// Web页面登录页
+    static let loginWebURL = "/pages/public/account/appLogin"
     /// 请求超时时间（秒）
     static let timeout: TimeInterval = 30
 }

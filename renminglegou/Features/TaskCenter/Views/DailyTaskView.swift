@@ -27,36 +27,12 @@ struct DailyTaskView: View {
                             .foregroundColor(.white)
                         
                         // 显示调试信息
-                        Text("看广告赚金币 (\(viewModel.todayAdCount)/\(maxTaskCount))")
+                        Text("看广告赚金币")
                             .font(.system(size: 14))
                             .foregroundColor(.white.opacity(0.7))
                     }
                     
                     Spacer()
-                    
-                    // 看视频按钮
-                    Button(action: {
-                        viewModel.watchDailyTaskAdvertisement()
-                    }) {
-                        Group {
-                            if let _ = UIImage(named: "watch_video_button") {
-                                Image("watch_video_button")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 80, height: 32)
-                            } else {
-                                Text("看广告")
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(Color.blue)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                            }
-                        }
-                    }
-                    .disabled(!viewModel.canWatchDailyAd || viewModel.isReceivingTask)
-                    .opacity(viewModel.canWatchDailyAd && !viewModel.isReceivingTask ? 1.0 : 0.6)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
@@ -201,7 +177,7 @@ struct DailyTaskView: View {
                                         .foregroundStyle(.white)
                                 }
                             } else if !viewModel.canWatchDailyAd {
-                                Text(viewModel.todayAdCount >= maxTaskCount ? "今日已完成" : "暂不可用")
+                                Text(viewModel.todayAdCount >= maxTaskCount ? "已完成" : "暂不可用")
                                     .font(.system(size: 24, weight: .medium))
                                     .foregroundStyle(.white.opacity(0.7))
                             } else {
