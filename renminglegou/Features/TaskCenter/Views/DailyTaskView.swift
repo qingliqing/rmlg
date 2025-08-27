@@ -199,9 +199,6 @@ struct DailyTaskView: View {
         .padding(.horizontal, 16)
         .opacity(viewModel.isLoading ? 0.5 : 1.0)
         .animation(.easeInOut(duration: 0.3), value: viewModel.isLoading)
-        .onReceive(viewModel.$todayAdCount) { newValue in
-                    print("DailyTaskView - 进度更新到: \(newValue)")
-                }
     }
     
     // 获取每日任务的总数量

@@ -9,36 +9,6 @@ import Foundation
 import Combine
 import UIKit
 
-enum TaskTab: CaseIterable {
-    case daily
-    case swipe
-    case brand
-    
-    var title: String {
-        switch self {
-        case .daily: return "每日任务"
-        case .swipe: return "刷刷赚"
-        case .brand: return "品牌任务"
-        }
-    }
-    
-    var normalImageName: String {
-        switch self {
-        case .daily: return "task_center_tab_normal"
-        case .swipe: return "task_center_tab_normal"
-        case .brand: return "task_center_tab_normal"
-        }
-    }
-    
-    var selectedImageName: String {
-        switch self {
-        case .daily: return "task_center_tab_selected"
-        case .swipe: return "task_center_tab_selected"
-        case .brand: return "task_center_tab_selected"
-        }
-    }
-}
-
 @MainActor
 class TaskCenterViewModel: ObservableObject {
     
@@ -52,8 +22,10 @@ class TaskCenterViewModel: ObservableObject {
     // MARK: - Ad Loading States
     @Published var isShowingAd = false
     
-    // MARK: - Daily Task Properties
-    @Published var todayAdCount: Int = 0
+    // MARK: - Task Progress Properties (替换原来的 todayAdCount)
+    @Published var dailyTaskProgress: AdTaskProgress?
+    @Published var swipeTaskProgress: AdTaskProgress?
+    @Published var brandTaskProgress: AdTaskProgress?
     @Published var isReceivingTask = false
     @Published var isCompletingView = false
     @Published var isGrantingPoints = false
@@ -78,6 +50,7 @@ class TaskCenterViewModel: ObservableObject {
     private let swipeVideoDuration: TimeInterval = 15.0
     private let dailyTaskType = 1 // 每日任务类型
     private let swipeTaskType = 2 // 刷刷赚任务类型
+    private let brandTaskType = 3 // 品牌任务类型
     
     // 广告加载超时定时器
     private var adLoadingTimer: Timer?
@@ -91,19 +64,23 @@ class TaskCenterViewModel: ObservableObject {
     
     // MARK: - Setup Methods
     
-    // 添加计算属性
+    // 计算属性
     var dailyTask: AdTask? {
-        return adConfig?.tasks?.first { $0.id == 1 }
+        return adConfig?.tasks?.first { $0.id == dailyTaskType }
     }
 
     var swipeTask: AdTask? {
-        return adConfig?.tasks?.first { $0.id == 2 }
+        return adConfig?.tasks?.first { $0.id == swipeTaskType }
     }
 
     var brandTask: AdTask? {
-        return adConfig?.tasks?.first { $0.id == 3 }
+        return adConfig?.tasks?.first { $0.id == brandTaskType }
     }
     
+    // 今日观看数量计算属性
+    var todayAdCount: Int {
+        return dailyTaskProgress?.currentViewCount ?? 0
+    }
     
     private func setupRewardAdManager() {
         rewardAdManager.delegate = self
@@ -121,14 +98,14 @@ class TaskCenterViewModel: ObservableObject {
             
             async let adConfigTask: () = loadAdConfig()
             async let rewardConfigsTask: () = loadRewardConfigs()
-            async let todayCountTask: () = loadTodayAdCount(taskType: dailyTask?.id ?? dailyTaskType)
+            async let taskProgressTask: () = loadAllTaskProgress()
             async let currentPointsTask: () = loadCurrentPoints()
             async let maxPointsTask: () = loadMaxPoints()
             async let adRecordsTask: () = loadAdRecords()
             
             do {
                 // 并行加载所有数据
-                _ = try await (adConfigTask, rewardConfigsTask, todayCountTask,
+                _ = try await (adConfigTask, rewardConfigsTask, taskProgressTask,
                               currentPointsTask, maxPointsTask, adRecordsTask)
                 
                 isLoading = false
@@ -139,7 +116,6 @@ class TaskCenterViewModel: ObservableObject {
             }
         }
     }
-    
     
     // MARK: - Individual Data Loading Methods
     
@@ -165,13 +141,35 @@ class TaskCenterViewModel: ObservableObject {
         }
     }
     
-    private func loadTodayAdCount(taskType: Int) async throws {
+    /// 加载所有任务进度（初始化时获取任务）
+    private func loadAllTaskProgress() async throws {
+        // 并行加载三种任务类型的进度
+        async let dailyProgressTask = loadTaskProgress(taskType: dailyTaskType)
+        async let swipeProgressTask = loadTaskProgress(taskType: swipeTaskType)
+        async let brandProgressTask = loadTaskProgress(taskType: brandTaskType)
+        
         do {
-            let count = try await taskService.getTodayCount(taskType: taskType)
-            todayAdCount = count
-            print("今日广告观看数量: \(count)")
+            let (dailyProgress, swipeProgress, brandProgress) = try await (dailyProgressTask, swipeProgressTask, brandProgressTask)
+            
+            dailyTaskProgress = dailyProgress
+            swipeTaskProgress = swipeProgress
+            brandTaskProgress = brandProgress
+            
+            print("任务进度加载完成 - 每日:\(dailyProgress.currentViewCount), 刷刷赚:\(swipeProgress.currentViewCount), 品牌:\(brandProgress.currentViewCount)")
         } catch {
-            print("加载今日广告观看数量失败: \(error)")
+            print("加载任务进度失败: \(error)")
+            throw error
+        }
+    }
+    
+    /// 获取单个任务类型的进度（会自动调用receiveTask接口）
+    private func loadTaskProgress(taskType: Int) async throws -> AdTaskProgress {
+        do {
+            let progress = try await taskService.receiveTask(taskType: taskType)
+            print("任务类型 \(taskType) 进度: \(progress)")
+            return progress
+        } catch {
+            print("加载任务类型 \(taskType) 进度失败: \(error)")
             throw error
         }
     }
@@ -211,26 +209,14 @@ class TaskCenterViewModel: ObservableObject {
     
     // MARK: - Daily Task Methods
     
-    /// 观看每日任务广告
+    /// 观看每日任务广告（移除领取任务步骤）
     func watchDailyTaskAdvertisement() {
         Task {
-            do {
-                // 1. 先领取任务
-                isReceivingTask = true
-                _ = try await taskService.receiveTask(taskType: dailyTask?.id ?? dailyTaskType)
-                isReceivingTask = false
-                
-                // 2. 开始加载广告 - 使用自定义Loading
-                startAdLoading()
-                
-                // 3. 展示激励广告
-                showRewardAd()
-                
-            } catch {
-                isReceivingTask = false
-                stopAdLoading()
-                loadingManager.showError(message: "领取每日任务失败")
-            }
+            // 直接开始加载广告 - 使用自定义Loading
+            startAdLoading()
+            
+            // 展示激励广告
+            showRewardAd()
         }
     }
     
@@ -242,8 +228,8 @@ class TaskCenterViewModel: ObservableObject {
                 _ = try await taskService.grantPoints()
                 isGrantingPoints = false
                 
-                // 刷新今日观看数量
-                _ = try await loadTodayAdCount(taskType: dailyTaskType)
+                // 刷新每日任务进度
+                dailyTaskProgress = try await loadTaskProgress(taskType: dailyTaskType)
                 
                 loadingManager.showSuccess(message: "每日任务奖励领取成功！")
             } catch {
@@ -255,32 +241,22 @@ class TaskCenterViewModel: ObservableObject {
     
     // MARK: - Swipe Task Methods
     
-    /// 开始刷视频任务
+    /// 开始刷视频任务（移除领取任务步骤）
     func startSwipeVideo() {
         guard !isWatchingSwipeVideo else { return }
         
         Task {
-            do {
-                // 1. 显示Loading
-                loadingManager.showLoading(style: .dots)
-                
-                // 2. 领取刷视频任务
-                isReceivingTask = true
-                _ = try await taskService.receiveTask(taskType: swipeTaskType)
-                isReceivingTask = false
-                
-                // 3. 隐藏Loading，开始模拟观看视频
-                loadingManager.hideLoading()
-                startSwipeVideoProgress()
-                
-            } catch {
-                isReceivingTask = false
-                loadingManager.showError(message: "领取刷视频任务失败")
-            }
+            // 显示Loading，直接开始模拟观看视频
+            loadingManager.showLoading(style: .dots)
+            
+            // 隐藏Loading，开始模拟观看视频
+            loadingManager.hideLoading()
+            startSwipeVideoProgress()
+            
         }
     }
     
-    /// 处理刷视频完成
+    /// 处理刷视频完成（观看后调用获取任务接口）
     func handleSwipeVideoCompletion() {
         Task {
             do {
@@ -295,10 +271,12 @@ class TaskCenterViewModel: ObservableObject {
                 // 3. 发放积分
                 _ = try await taskService.grantPoints()
                 
-                // 4. 刷新数据
-                async let todayCountTask: () = loadTodayAdCount(taskType: swipeTaskType)
+                // 4. 刷新数据（获取最新任务进度）
+                async let swipeProgressTask = loadTaskProgress(taskType: swipeTaskType)
                 async let currentPointsTask: () = loadCurrentPoints()
-                _ = try await (todayCountTask, currentPointsTask)
+                
+                let (newProgress, _) = try await (swipeProgressTask, currentPointsTask)
+                swipeTaskProgress = newProgress
                 
                 // 5. 预加载下一个广告
                 rewardAdManager.preloadAd()
@@ -449,7 +427,8 @@ class TaskCenterViewModel: ObservableObject {
     /// 每日任务是否可以观看广告
     var canWatchDailyAd: Bool {
         guard let task = dailyTask else { return false }
-        return todayAdCount < task.totalAdCount && !loadingManager.isShowingLoading && !isShowingAd
+        let currentCount = dailyTaskProgress?.currentViewCount ?? 0
+        return currentCount < task.totalAdCount && !loadingManager.isShowingLoading && !isShowingAd
     }
     
     /// 是否正在处理广告相关操作
@@ -544,7 +523,7 @@ extension TaskCenterViewModel: RewardAdManagerDelegate {
         }
     }
     
-    /// 处理广告观看完成后的逻辑
+    /// 处理广告观看完成后的逻辑（观看后调用获取任务接口）
     private func handleAdWatchCompleted() async {
         do {
             // 1. 显示处理Loading
@@ -558,10 +537,12 @@ extension TaskCenterViewModel: RewardAdManagerDelegate {
             // 3. 发放积分
             _ = try await taskService.grantPoints()
             
-            // 4. 刷新数据
-            async let todayCountTask: () = loadTodayAdCount(taskType: dailyTaskType)
+            // 4. 刷新数据（获取最新任务进度）
+            async let dailyProgressTask = loadTaskProgress(taskType: dailyTaskType)
             async let currentPointsTask: () = loadCurrentPoints()
-            _ = try await (todayCountTask, currentPointsTask)
+            
+            let (newProgress, _) = try await (dailyProgressTask, currentPointsTask)
+            dailyTaskProgress = newProgress
             
             // 5. 预加载下一个广告
             rewardAdManager.preloadAd()
@@ -571,6 +552,36 @@ extension TaskCenterViewModel: RewardAdManagerDelegate {
         } catch {
             isCompletingView = false
             loadingManager.showError(message: "处理广告完成失败")
+        }
+    }
+}
+
+enum TaskTab: CaseIterable {
+    case daily
+    case swipe
+    case brand
+    
+    var title: String {
+        switch self {
+        case .daily: return "每日任务"
+        case .swipe: return "刷刷赚"
+        case .brand: return "品牌任务"
+        }
+    }
+    
+    var normalImageName: String {
+        switch self {
+        case .daily: return "task_center_tab_normal"
+        case .swipe: return "task_center_tab_normal"
+        case .brand: return "task_center_tab_normal"
+        }
+    }
+    
+    var selectedImageName: String {
+        switch self {
+        case .daily: return "task_center_tab_selected"
+        case .swipe: return "task_center_tab_selected"
+        case .brand: return "task_center_tab_selected"
         }
     }
 }

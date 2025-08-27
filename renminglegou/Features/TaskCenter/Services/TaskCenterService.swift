@@ -86,13 +86,13 @@ class TaskCenterService {
     
     /// 用户领取广告任务
     /// - Parameter taskType: 任务类型
-    func receiveTask(taskType: Int) async throws -> Empty {
+    func receiveTask(taskType: Int) async throws -> AdTaskProgress {
         let api = AdTaskAPI.receiveTask(taskType: taskType)
         return try await networkManager.request(
             path: api.path,
             method: api.method,
             parameters: api.parameters,
-            responseType: Empty.self
+            responseType: AdTaskProgress.self
         )
     }
     
