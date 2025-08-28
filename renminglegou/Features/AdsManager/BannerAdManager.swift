@@ -10,12 +10,6 @@ import UIKit
 import BUAdSDK
 
 // MARK: - Banner 广告管理器
-import SwiftUI
-import UIKit
-// 假设你导入的是穿山甲SDK
-// import BUAdSDK
-
-// MARK: - Banner 广告管理器
 final class BannerAdManager: NSObject, ObservableObject, @unchecked Sendable {
     
     // MARK: - Published Properties
@@ -28,6 +22,9 @@ final class BannerAdManager: NSObject, ObservableObject, @unchecked Sendable {
     private var bannerView: BUNativeExpressBannerView?
     private var refreshTimer: Timer?
     private var rootViewController: UIViewController?
+    private var isInitialized = false // 添加初始化状态标记
+    private var lastLoadTime: TimeInterval = 0 // 添加上次加载时间
+    private let minimumLoadInterval: TimeInterval = 5.0 // 最小加载间隔（秒）
     
     // MARK: - Configuration
     let slotId: String
@@ -47,10 +44,32 @@ final class BannerAdManager: NSObject, ObservableObject, @unchecked Sendable {
     
     // MARK: - Public Methods
     
-    /// 加载Banner广告
+    /// 加载Banner广告（带防重复调用逻辑）
     @MainActor
-    func loadBannerAd(in viewController: UIViewController, containerSize: CGSize) {
+    func loadBannerAd(in viewController: UIViewController, containerSize: CGSize, force: Bool = false) {
+        // 防止重复加载的检查
+        let currentTime = Date().timeIntervalSince1970
+        if !force && isLoading {
+            print("Banner广告正在加载中，跳过重复请求")
+            return
+        }
+        
+        // 检查最小加载间隔
+        if !force && currentTime - lastLoadTime < minimumLoadInterval {
+            print("Banner广告加载间隔太短，跳过请求")
+            return
+        }
+        
+        // 如果已经有加载成功的广告且不是强制刷新，跳过
+        if !force && isLoaded && bannerView != nil {
+            print("Banner广告已加载，跳过重复请求")
+            return
+        }
+        
+        lastLoadTime = currentTime
         rootViewController = viewController
+        
+        print("开始加载Banner广告 - 强制: \(force), 容器尺寸: \(containerSize)")
         
         // 清理上次的广告
         cleanup()
@@ -77,7 +96,20 @@ final class BannerAdManager: NSObject, ObservableObject, @unchecked Sendable {
         self.bannerView = bannerView
         bannerView.loadAdData()
         
-        print("开始加载Banner广告，尺寸: \(adaptedSize)")
+        print("Banner广告开始加载，尺寸: \(adaptedSize)")
+    }
+    
+    /// 初始化加载（仅调用一次）
+    @MainActor
+    func initializeAd(in viewController: UIViewController, containerSize: CGSize) {
+        guard !isInitialized else {
+            print("Banner广告已初始化，跳过重复初始化")
+            return
+        }
+        
+        isInitialized = true
+        loadBannerAd(in: viewController, containerSize: containerSize, force: true)
+        print("Banner广告完成初始化")
     }
     
     /// 获取当前的Banner视图
@@ -90,11 +122,15 @@ final class BannerAdManager: NSObject, ObservableObject, @unchecked Sendable {
     func startAutoRefresh() async {
         stopAutoRefresh()
         
-        guard refreshInterval > 0 else { return }
+        guard refreshInterval > 0 else {
+            print("自动刷新间隔为0，不启动自动刷新")
+            return
+        }
         
         refreshTimer = Timer.scheduledTimer(withTimeInterval: refreshInterval, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             Task { @MainActor in
+                print("定时器触发广告刷新")
                 await self.refreshAd()
             }
         }
@@ -104,27 +140,47 @@ final class BannerAdManager: NSObject, ObservableObject, @unchecked Sendable {
     
     /// 停止自动刷新
     func stopAutoRefresh() {
-        refreshTimer?.invalidate()
-        refreshTimer = nil
+        if refreshTimer != nil {
+            print("停止Banner广告自动刷新")
+            refreshTimer?.invalidate()
+            refreshTimer = nil
+        }
     }
     
     /// 手动刷新广告
     @MainActor
     func refreshAd() async {
-        guard let viewController = rootViewController else { return }
-        
-        let containerSize = CGSize(width: adSize.width, height: adSize.height)
-        loadBannerAd(in: viewController, containerSize: containerSize)
+        guard let viewController = rootViewController else {
+            print("无法刷新广告：缺少根视图控制器")
+            return
+        }
         
         print("手动刷新Banner广告")
+        let containerSize = CGSize(width: adSize.width, height: adSize.height)
+        loadBannerAd(in: viewController, containerSize: containerSize, force: true)
     }
     
     /// 清理资源
     @MainActor
     func cleanup() {
-        bannerView?.removeFromSuperview()
-        bannerView = nil
+        if let bannerView = bannerView {
+            print("清理Banner广告视图")
+            bannerView.removeFromSuperview()
+            self.bannerView = nil
+        }
         isLoaded = false
+    }
+    
+    /// 重置状态（用于调试）
+    @MainActor
+    func resetState() {
+        print("重置Banner广告管理器状态")
+        stopAutoRefresh()
+        cleanup()
+        isInitialized = false
+        lastLoadTime = 0
+        isLoading = false
+        errorMessage = nil
     }
     
     // MARK: - Private Methods
@@ -148,6 +204,7 @@ final class BannerAdManager: NSObject, ObservableObject, @unchecked Sendable {
     }
     
     deinit {
+        print("BannerAdManager 销毁")
         // deinit 中只能进行同步清理
         refreshTimer?.invalidate()
         refreshTimer = nil
@@ -165,32 +222,35 @@ extension BannerAdManager: BUNativeExpressBannerViewDelegate {
     // 广告加载成功
     nonisolated func nativeExpressBannerAdViewDidLoad(_ bannerAdView: BUNativeExpressBannerView) {
         Task { @MainActor in
-            print("Banner广告加载成功")
+            print("✅ Banner广告加载成功")
             isLoading = false
             isLoaded = true
             errorMessage = nil
             
             // 更新实际广告尺寸
             adSize = bannerAdView.frame.size
+            print("广告实际尺寸: \(adSize)")
         }
     }
     
     // 广告加载失败
     nonisolated func nativeExpressBannerAdView(_ bannerAdView: BUNativeExpressBannerView, didLoadFailWithError error: Error?) {
         Task { @MainActor in
-            print("Banner广告加载失败: \(error?.localizedDescription ?? "Unknown error")")
+            print("❌ Banner广告加载失败: \(error?.localizedDescription ?? "Unknown error")")
             isLoading = false
             isLoaded = false
             errorMessage = error?.localizedDescription ?? "广告加载失败"
         }
     }
     
-    // 广告已经展示
+    // 广告即将展示
     nonisolated func nativeExpressBannerAdViewWillBecomVisible(_ bannerAdView: BUNativeExpressBannerView) {
         Task { @MainActor in
-            print("Banner广告已经展示")
-            // 广告展示成功后开始自动刷新
-            await startAutoRefresh()
+            print("👀 Banner广告即将展示")
+            // 只有在成功展示后才开始自动刷新，避免重复启动
+            if refreshTimer == nil {
+                await startAutoRefresh()
+            }
             
             // 可以获取展示相关信息
             /*
@@ -205,23 +265,23 @@ extension BannerAdManager: BUNativeExpressBannerViewDelegate {
     
     // 广告被点击
     nonisolated func nativeExpressBannerAdViewDidClick(_ bannerAdView: BUNativeExpressBannerView) {
-        print("用户点击了Banner广告")
+        print("👆 用户点击了Banner广告")
     }
     
     // 用户选择了负反馈信息
     nonisolated func nativeExpressBannerAdView(_ bannerAdView: BUNativeExpressBannerView, dislikeWithReason filterwords: [BUDislikeWords]?) {
         Task { @MainActor in
-            print("用户选择了负反馈信息")
-            // 用户不喜欢该广告，移除广告并可能重新加载
+            print("👎 用户选择了负反馈信息")
+            // 用户不喜欢该广告，移除广告
             cleanup()
             
-            // 延迟重新加载广告
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            // 延迟重新加载广告，避免立即重复加载
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
                 Task { @MainActor in
-                    if let viewController = self?.rootViewController {
-                        let containerSize = self?.adSize ?? self?.defaultAdSize ?? CGSize(width: 375, height: 160)
-                        self?.loadBannerAd(in: viewController, containerSize: containerSize)
-                    }
+                    guard let self = self, let viewController = self.rootViewController else { return }
+                    print("负反馈后重新加载广告")
+                    let containerSize = self.adSize.width > 0 ? self.adSize : self.defaultAdSize
+                    self.loadBannerAd(in: viewController, containerSize: containerSize, force: true)
                 }
             }
         }
@@ -230,11 +290,9 @@ extension BannerAdManager: BUNativeExpressBannerViewDelegate {
     // 广告视图被移除
     nonisolated func nativeExpressBannerAdViewDidRemoved(_ bannerAdView: BUNativeExpressBannerView) {
         Task { @MainActor in
-            print("Banner广告视图被移除")
+            print("🗑️ Banner广告视图被移除")
             isLoaded = false
             stopAutoRefresh()
         }
     }
 }
-
-

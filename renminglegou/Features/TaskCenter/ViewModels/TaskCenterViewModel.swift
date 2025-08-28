@@ -99,14 +99,12 @@ class TaskCenterViewModel: ObservableObject {
             async let adConfigTask: () = loadAdConfig()
             async let rewardConfigsTask: () = loadRewardConfigs()
             async let taskProgressTask: () = loadAllTaskProgress()
-            async let currentPointsTask: () = loadCurrentPoints()
             async let maxPointsTask: () = loadMaxPoints()
             async let adRecordsTask: () = loadAdRecords()
             
             do {
                 // 并行加载所有数据
-                _ = try await (adConfigTask, rewardConfigsTask, taskProgressTask,
-                              currentPointsTask, maxPointsTask, adRecordsTask)
+                _ = try await (adConfigTask, rewardConfigsTask, taskProgressTask, maxPointsTask, adRecordsTask)
                 
                 isLoading = false
                 print("所有数据加载完成")
@@ -174,16 +172,6 @@ class TaskCenterViewModel: ObservableObject {
         }
     }
     
-    private func loadCurrentPoints() async throws {
-        do {
-            let points = try await taskService.getCurrentPoints()
-            currentPoints = points
-            print("当前积分: \(points)")
-        } catch {
-            print("加载当前积分失败: \(error)")
-            throw error
-        }
-    }
     
     private func loadMaxPoints() async throws {
         do {
@@ -273,9 +261,8 @@ class TaskCenterViewModel: ObservableObject {
                 
                 // 4. 刷新数据（获取最新任务进度）
                 async let swipeProgressTask = loadTaskProgress(taskType: swipeTaskType)
-                async let currentPointsTask: () = loadCurrentPoints()
                 
-                let (newProgress, _) = try await (swipeProgressTask, currentPointsTask)
+                let newProgress = try await swipeProgressTask
                 swipeTaskProgress = newProgress
                 
                 // 5. 预加载下一个广告
@@ -539,9 +526,8 @@ extension TaskCenterViewModel: RewardAdManagerDelegate {
             
             // 4. 刷新数据（获取最新任务进度）
             async let dailyProgressTask = loadTaskProgress(taskType: dailyTaskType)
-            async let currentPointsTask: () = loadCurrentPoints()
             
-            let (newProgress, _) = try await (dailyProgressTask, currentPointsTask)
+            let newProgress = try await dailyProgressTask
             dailyTaskProgress = newProgress
             
             // 5. 预加载下一个广告

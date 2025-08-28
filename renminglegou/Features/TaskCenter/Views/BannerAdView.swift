@@ -18,13 +18,11 @@ struct BannerAdView: UIViewRepresentable {
     
     // MARK: - Initialization
     init(slotId: String = "103585837",
-         refreshInterval: TimeInterval = 30.0,
-         containerSize: CGSize = CGSize(width: UIScreen.main.bounds.width, height: 160),
+         containerSize: CGSize = CGSize(width: UIScreen.main.bounds.width - 40, height: 160),
          backgroundColor: UIColor = .systemBackground) {
         
         self._adManager = StateObject(wrappedValue: BannerAdManager(
             slotId: slotId,
-            refreshInterval: refreshInterval,
             defaultAdSize: containerSize
         ))
         self.containerSize = containerSize
@@ -33,146 +31,160 @@ struct BannerAdView: UIViewRepresentable {
     
     // MARK: - UIViewRepresentable
     
-    func makeUIView(context: Context) -> UIView {
-        let containerView = UIView()
+    func makeUIView(context: Context) -> BannerContainerView {
+        let containerView = BannerContainerView()
         containerView.backgroundColor = backgroundColor
+        containerView.adManager = adManager
+        containerView.containerSize = containerSize
+        containerView.layer.cornerRadius = 16
+        containerView.layer.masksToBounds = true
         return containerView
     }
     
-    func updateUIView(_ uiView: UIView, context: Context) {
-        // 获取根视图控制器
-        guard let viewController = uiView.findViewController() else {
-            print("无法找到根视图控制器")
+    func updateUIView(_ uiView: BannerContainerView, context: Context) {
+        // 只在容器视图中更新尺寸
+        uiView.containerSize = containerSize
+    }
+    
+    static func dismantleUIView(_ uiView: BannerContainerView, coordinator: ()) {
+        uiView.cleanup()
+    }
+}
+
+// MARK: - 专用容器视图
+class BannerContainerView: UIView {
+    
+    var adManager: BannerAdManager?
+    var containerSize: CGSize = .zero {
+        didSet {
+            if containerSize != oldValue {
+                setupAdIfNeeded()
+            }
+        }
+    }
+    
+    private var hasSetupAd = false
+    
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        
+        // 当视图添加到窗口时，尝试设置广告
+        if window != nil {
+            setupAdIfNeeded()
+        }
+    }
+    
+    private func setupAdIfNeeded() {
+        guard !hasSetupAd,
+              let adManager = adManager,
+              let viewController = findViewController(),
+              containerSize != .zero else {
             return
         }
         
-        // 清理之前的广告视图
-        uiView.subviews.forEach { $0.removeFromSuperview() }
+        hasSetupAd = true
         
-        // 加载新广告
-        adManager.loadBannerAd(in: viewController, containerSize: containerSize)
-        
-        // 添加广告视图到容器
-        if let bannerView = adManager.getBannerView() {
-            uiView.addSubview(bannerView)
+        Task { @MainActor in
+            print("容器视图开始初始化广告")
+            adManager.initializeAd(in: viewController, containerSize: containerSize)
             
-            // 设置约束使广告居中
-            bannerView.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                bannerView.centerXAnchor.constraint(equalTo: uiView.centerXAnchor),
-                bannerView.centerYAnchor.constraint(equalTo: uiView.centerYAnchor),
-                bannerView.leadingAnchor.constraint(greaterThanOrEqualTo: uiView.leadingAnchor, constant: 8),
-                bannerView.trailingAnchor.constraint(lessThanOrEqualTo: uiView.trailingAnchor, constant: -8)
-            ])
+            // 监听广告加载完成
+            setupAdLoadedObserver()
         }
     }
     
-    static func dismantleUIView(_ uiView: UIView, coordinator: ()) {
-        // 清理资源
-        uiView.subviews.forEach { $0.removeFromSuperview() }
-    }
-}
-
-// MARK: - UIView Extension
-extension UIView {
-    func findViewController() -> UIViewController? {
-        if let nextResponder = self.next as? UIViewController {
-            return nextResponder
-        } else if let nextResponder = self.next as? UIView {
-            return nextResponder.findViewController()
-        } else {
-            return nil
-        }
-    }
-}
-
-// MARK: - SwiftUI Banner广告组件（带状态显示）
-struct AdaptiveBannerAdView: View {
-    
-    // MARK: - Properties
-    @StateObject private var adManager = BannerAdManager()
-    
-    let slotId: String
-    let refreshInterval: TimeInterval
-    let maxHeight: CGFloat
-    let showLoadingIndicator: Bool
-    let showErrorMessage: Bool
-    
-    // MARK: - Initialization
-    init(slotId: String = "103585837",
-         refreshInterval: TimeInterval = 30.0,
-         maxHeight: CGFloat = 200,
-         showLoadingIndicator: Bool = true,
-         showErrorMessage: Bool = true) {
+    private func setupAdLoadedObserver() {
+        guard let adManager = adManager else { return }
         
-        self.slotId = slotId
-        self.refreshInterval = refreshInterval
-        self.maxHeight = maxHeight
-        self.showLoadingIndicator = showLoadingIndicator
-        self.showErrorMessage = showErrorMessage
-    }
-    
-    // MARK: - Body
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // 背景
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(.systemGray6))
-                
-                if adManager.isLoading && showLoadingIndicator {
-                    // 加载状态
-                    VStack(spacing: 8) {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                        Text("广告加载中...")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                } else if let errorMessage = adManager.errorMessage, showErrorMessage {
-                    // 错误状态
-                    VStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle")
-                            .foregroundColor(.orange)
-                        Text(errorMessage)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(2)
-                        
-                        Button("重试") {
-                            adManager.refreshAd()
-                        }
-                        .font(.caption)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 4)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(4)
-                    }
-                    .padding()
-                } else if adManager.isLoaded {
-                    // 广告内容
-                    BannerAdView(
-                        slotId: slotId,
-                        refreshInterval: refreshInterval,
-                        containerSize: geometry.size,
-                        backgroundColor: .clear
-                    )
-                } else {
-                    // 默认占位符
-                    VStack {
-                        Image(systemName: "rectangle.dashed")
-                            .font(.title2)
-                            .foregroundColor(.secondary)
-                        Text("广告位")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
+        // 创建一个定时器来检查广告是否加载完成
+        let timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self, weak adManager] timer in
+            guard let self = self,
+                  let adManager = adManager,
+                  let bannerView = adManager.getBannerView() else {
+                return
+            }
+            
+            // 停止定时器
+            timer.invalidate()
+            
+            // 在主线程中添加广告视图
+            DispatchQueue.main.async {
+                self.addBannerView(bannerView)
             }
         }
-        .frame(maxHeight: min(adManager.adSize.height, maxHeight))
-        .clipped()
+        
+        // 10秒后自动停止定时器（防止内存泄漏）
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+            timer.invalidate()
+        }
+    }
+    
+    private func addBannerView(_ bannerView: UIView) {
+        // 移除旧的广告视图
+        subviews.forEach { $0.removeFromSuperview() }
+        
+        // 添加新的广告视图
+        addSubview(bannerView)
+        
+        // 设置约束 - 防止超出边界
+        bannerView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            bannerView.topAnchor.constraint(equalTo: topAnchor),
+            bannerView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            bannerView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            bannerView.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+        
+        print("Banner广告视图已添加到容器")
+        print("容器尺寸: \(bounds.size)")
+        print("广告尺寸: \(bannerView.frame.size)")
+    }
+    
+    func cleanup() {
+        hasSetupAd = false
+        subviews.forEach { $0.removeFromSuperview() }
+    }
+}
+
+// MARK: - 改进的 UIView Extension
+extension UIView {
+    func findViewController() -> UIViewController? {
+        // 方法1: 通过响应链查找
+        var nextResponder = self.next
+        while nextResponder != nil {
+            if let viewController = nextResponder as? UIViewController {
+                return viewController
+            }
+            nextResponder = nextResponder?.next
+        }
+        
+        // 方法2: 通过场景查找
+        if let windowScene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first(where: { $0.activationState == .foregroundActive }),
+           let window = windowScene.windows.first(where: \.isKeyWindow),
+           let rootViewController = window.rootViewController {
+            return findTopViewController(from: rootViewController)
+        }
+        
+        return nil
+    }
+    
+    private func findTopViewController(from root: UIViewController) -> UIViewController {
+        if let presented = root.presentedViewController {
+            return findTopViewController(from: presented)
+        }
+        
+        if let navigationController = root as? UINavigationController,
+           let topController = navigationController.topViewController {
+            return findTopViewController(from: topController)
+        }
+        
+        if let tabBarController = root as? UITabBarController,
+           let selectedController = tabBarController.selectedViewController {
+            return findTopViewController(from: selectedController)
+        }
+        
+        return root
     }
 }

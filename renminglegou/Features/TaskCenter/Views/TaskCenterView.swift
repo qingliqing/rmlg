@@ -64,12 +64,9 @@ struct TaskCenterView: View {
     
     @ViewBuilder
     private var bannerView: some View {
-        Image("task_center_bg")
-            .resizable()
-            .scaledToFill()
-            .frame(maxHeight: 160)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .padding(.horizontal, 16)
+        BannerAdView(slotId: "103585837")
+            .frame(height: 160)
+            .padding(.horizontal)
     }
     
     @ViewBuilder

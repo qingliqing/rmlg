@@ -27,3 +27,13 @@ class NavigationUtil {
         viewController?.dismiss(animated: true)
     }
 }
+
+func getRootViewController() -> UIViewController? {
+    guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+          let window = windowScene.windows.first(where: { $0.isKeyWindow }),
+          let rootViewController = window.rootViewController else {
+        print("❌ 无法获取根视图控制器")
+        return nil
+    }
+    return rootViewController
+}
