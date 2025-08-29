@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1D2819012E62055500A43E49 /* PopupView in Frameworks */ = {isa = PBXBuildFile; productRef = 1D2819002E62055500A43E49 /* PopupView */; };
 		285DD3872E4DC36D007A8C29 /* Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 285DD3862E4DC36D007A8C29 /* Alamofire.framework */; };
 		36FD593CD38CD12C5217248E /* Pods_renminglegou.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3D8EC9276D64B64D7E96D0D7 /* Pods_renminglegou.framework */; };
 /* End PBXBuildFile section */
@@ -74,6 +75,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1D2819012E62055500A43E49 /* PopupView in Frameworks */,
 				36FD593CD38CD12C5217248E /* Pods_renminglegou.framework in Frameworks */,
 				285DD3872E4DC36D007A8C29 /* Alamofire.framework in Frameworks */,
 			);
@@ -236,6 +238,9 @@
 			);
 			mainGroup = 284374F52E4A14FF00A1CCCD;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				1D2818FF2E62055500A43E49 /* XCRemoteSwiftPackageReference "PopupView" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 284374FF2E4A150000A1CCCD /* Products */;
 			projectDirPath = "";
@@ -688,6 +693,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		1D2818FF2E62055500A43E49 /* XCRemoteSwiftPackageReference "PopupView" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/exyte/PopupView";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.1.11;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1D2819002E62055500A43E49 /* PopupView */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1D2818FF2E62055500A43E49 /* XCRemoteSwiftPackageReference "PopupView" */;
+			productName = PopupView;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 284374F62E4A14FF00A1CCCD /* Project object */;
 }

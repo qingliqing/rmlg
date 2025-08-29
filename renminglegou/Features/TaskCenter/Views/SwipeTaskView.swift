@@ -10,6 +10,7 @@ import SwiftUI
 struct SwipeTaskView: View {
     @ObservedObject var viewModel: TaskCenterViewModel
     @State private var isWatchingVideo = false
+    let onShowRewardPopup: () -> Void  // 添加回调闭包
     
     var body: some View {
         VStack(spacing: 16) {
@@ -28,11 +29,9 @@ struct SwipeTaskView: View {
                     Button(action: {
                         handleSwipeAction()
                     }) {
-                        
                         Image("swipe_start_btn")
                             .resizable()
                             .scaledToFit()
-                        
                     }
                     .frame(width: 250, height: 60)
                     .padding(.horizontal, 20)
@@ -45,9 +44,6 @@ struct SwipeTaskView: View {
     
     // MARK: - Private Methods
     private func handleSwipeAction() {
-        guard !isWatchingVideo else { return }
-        
-        isWatchingVideo = true
-        
+        onShowRewardPopup() // 调用回调
     }
 }

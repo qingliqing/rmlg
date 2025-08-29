@@ -6,11 +6,13 @@
 //
 
 import SwiftUI
+import PopupView
 
 struct TaskCenterView: View {
     @StateObject private var viewModel = TaskCenterViewModel()
     @State private var selectedTab: TaskTab = .daily
     @Environment(\.presentationMode) var presentationMode
+    @State private var showRewardPopup = false
     
     var body: some View {
         ZStack {
@@ -28,9 +30,6 @@ struct TaskCenterView: View {
                 .padding(.top, 20)
                 .padding(.horizontal, 4)
             }
-            
-            // Alert overlays
-            alertOverlays
         }
         .padding(.top, DeviceConsts.totalHeight + 20)
         .navigationTitle("任务中心")
@@ -61,6 +60,28 @@ struct TaskCenterView: View {
                 selectedTab = firstTab
             }
         }
+        .popup(
+            isPresented: $showRewardPopup,
+            view: {
+                RewardPopupView(
+                    task: viewModel.swipeTask,
+                    onStartAction: {
+                        viewModel.rewardAdViewModel.watchRewardAd()
+                    }
+                )
+                .ignoresSafeArea(.container, edges: .bottom)
+            },
+            customize: { params in
+                params
+                    .type(.floater(verticalPadding: 0, horizontalPadding: 0, useSafeAreaInset: false))
+                    .backgroundColor(.black.opacity(0.3))
+                    .position(.bottom)
+                    .dragToDismiss(false)
+                    .closeOnTap(false)
+                    .closeOnTapOutside(true)
+                    .allowTapThroughBG(false)
+            }
+        )
     }
     
     @ViewBuilder
@@ -75,7 +96,7 @@ struct TaskCenterView: View {
         VStack(spacing: 16) {
             // 动态生成 Tab 按钮
             if !availableTabs.isEmpty {
-                HStack(spacing: 20) {
+                HStack(spacing: 30) {
                     ForEach(availableTabs, id: \.self) { tab in
                         Button(action: {
                             withAnimation(.easeInOut(duration: 0.2)) {
@@ -180,7 +201,12 @@ struct TaskCenterView: View {
         case .daily:
             DailyTaskView(viewModel: viewModel)
         case .swipe:
-            SwipeTaskView(viewModel: viewModel)
+            SwipeTaskView(
+                viewModel: viewModel,
+                onShowRewardPopup: {
+                    showRewardPopup = true
+                }
+            )
         case .brand:
             BrandTaskView(viewModel: viewModel)
         }
@@ -199,12 +225,5 @@ struct TaskCenterView: View {
         UINavigationBar.appearance().standardAppearance = appearance
         UINavigationBar.appearance().compactAppearance = appearance
         UINavigationBar.appearance().scrollEdgeAppearance = appearance
-    }
-    
-    // MARK: - Alert Overlays
-    @ViewBuilder
-    private var alertOverlays: some View {
-        // 可以在这里添加全局的alert或loading视图
-        EmptyView()
     }
 }
