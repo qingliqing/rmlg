@@ -26,6 +26,7 @@ struct TaskCenterView: View {
                     taskContentView
                 }
                 .padding(.top, 20)
+                .padding(.horizontal, 4)
             }
             
             // Alert overlays

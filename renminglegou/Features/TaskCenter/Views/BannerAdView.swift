@@ -19,7 +19,7 @@ struct BannerAdView: UIViewRepresentable {
     // MARK: - Initialization
     init(slotId: String = "103585837",
          containerSize: CGSize = CGSize(width: UIScreen.main.bounds.width - 40, height: 160),
-         backgroundColor: UIColor = .systemBackground) {
+         backgroundColor: UIColor = .clear) {
         
         self._adManager = StateObject(wrappedValue: BannerAdManager(
             slotId: slotId,
@@ -36,8 +36,6 @@ struct BannerAdView: UIViewRepresentable {
         containerView.backgroundColor = backgroundColor
         containerView.adManager = adManager
         containerView.containerSize = containerSize
-        containerView.layer.cornerRadius = 16
-        containerView.layer.masksToBounds = true
         return containerView
     }
     
@@ -129,10 +127,10 @@ class BannerContainerView: UIView {
         // 设置约束 - 防止超出边界
         bannerView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            bannerView.topAnchor.constraint(equalTo: topAnchor),
-            bannerView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            bannerView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            bannerView.bottomAnchor.constraint(equalTo: bottomAnchor)
+            bannerView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            bannerView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            bannerView.widthAnchor.constraint(equalTo: widthAnchor),
+            bannerView.heightAnchor.constraint(equalTo: heightAnchor)
         ])
         
         print("Banner广告视图已添加到容器")
