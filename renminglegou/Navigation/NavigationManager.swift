@@ -7,23 +7,11 @@
 
 import SwiftUI
 
+import SwiftUI
+
 enum NavigationDestination: Hashable {
-    case taskCenter(params: [String: Any]?)
-    
-    // 实现 Hashable
-    func hash(into hasher: inout Hasher) {
-        switch self {
-        case .taskCenter:
-            hasher.combine("taskCenter")
-        }
-    }
-    
-    static func == (lhs: NavigationDestination, rhs: NavigationDestination) -> Bool {
-        switch (lhs, rhs) {
-        case (.taskCenter, .taskCenter):
-            return true
-        }
-    }
+    case taskCenter(params: [String: AnyHashable]? = nil)
+    case webView(url: URL)
 }
 
 @available(iOS 16.0, *)

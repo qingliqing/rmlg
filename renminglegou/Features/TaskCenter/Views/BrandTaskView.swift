@@ -11,16 +11,17 @@ struct BrandTaskView: View {
     @ObservedObject var viewModel: TaskCenterViewModel
     @State private var isSubmitting = false
     
+    // 回调闭包
+    let onSubmitCompleted: () -> Void
+    
     var body: some View {
         ZStack {
-            // 背景图片 - 修复图片显示比例
+            // 背景图片
             Image("brand_task_card_bg")
                 .resizable()
                 .scaledToFill()
                 .frame(height: 294)
-                .background(.red)
                 .clipShape(RoundedRectangle(cornerRadius: 16))
-            
             
             VStack(spacing: 16) {
                 Spacer()
@@ -40,20 +41,13 @@ struct BrandTaskView: View {
             }
         }
         .padding(.horizontal, 24)
-        
     }
     
     // MARK: - Private Methods
     private func handleBrandTaskAction() {
         guard !isSubmitting else { return }
-        
         isSubmitting = true
-        
-        // 模拟任务提交过程
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            isSubmitting = false
-            // 调用 viewModel 的相关方法处理品牌任务
-            viewModel.handleBrandTaskResult()
-        }
+        // 回调给上层
+        onSubmitCompleted()
     }
 }

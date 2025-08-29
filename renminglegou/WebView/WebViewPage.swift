@@ -12,7 +12,7 @@ struct WebViewPage: View {
     let defaultTitle: String
     
     @State private var pageTitle: String = ""
-    @StateObject private var navigationManager = NavigationManager()
+    @EnvironmentObject var navigationManager: NavigationManager
     
     var body: some View {
         NavigationStack(path: $navigationManager.path) {
@@ -50,6 +50,8 @@ struct WebViewPage: View {
         switch destination {
         case .taskCenter(_):
             TaskCenterView()
+        case .webView(url: let url):
+            WebViewPage(url: url, defaultTitle: "")
         }
     }
 }

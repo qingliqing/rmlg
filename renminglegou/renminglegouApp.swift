@@ -13,7 +13,7 @@ import BUAdTestMeasurement
 
 @main
 struct renminglegouApp: App {
-    
+    @StateObject private var navigationManager = NavigationManager()
     init() {
         setupBUAdSDK()
     }
@@ -24,7 +24,7 @@ struct renminglegouApp: App {
                 SplashView()
                 // 全局Loading覆盖层
                 PureSwiftUILoadingView()
-            }
+            }.environmentObject(navigationManager)
             
         }
     }

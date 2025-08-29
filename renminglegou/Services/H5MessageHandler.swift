@@ -48,9 +48,15 @@ class H5MessageHandler: NSObject {
         }
         
         // 解析参数
-        var params: [String: Any]? = nil
+        var params: [String: AnyHashable]? = nil
         if let bodyDict = body as? [String: Any] {
-            params = bodyDict
+            var hashableDict: [String: AnyHashable] = [:]
+            for (key, value) in bodyDict {
+                if let hashableValue = value as? AnyHashable {
+                    hashableDict[key] = hashableValue
+                }
+            }
+            params = hashableDict
         }
         
         // 使用 SwiftUI 导航

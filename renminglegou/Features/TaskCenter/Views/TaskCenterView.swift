@@ -9,6 +9,7 @@ import SwiftUI
 import PopupView
 
 struct TaskCenterView: View {
+    @EnvironmentObject var navigationManager: NavigationManager
     @StateObject private var viewModel = TaskCenterViewModel()
     @State private var selectedTab: TaskTab = .daily
     @Environment(\.presentationMode) var presentationMode
@@ -208,7 +209,13 @@ struct TaskCenterView: View {
                 }
             )
         case .brand:
-            BrandTaskView(viewModel: viewModel)
+            BrandTaskView(viewModel: viewModel) {
+                if viewModel.brandTask?.hasJumpLink ?? false,
+                   let urlString = viewModel.brandTask?.jumpLink
+                {
+                    navigationManager.navigateTo(.webView(url:URL(string: urlString)!))
+                }
+            }
         }
     }
     
