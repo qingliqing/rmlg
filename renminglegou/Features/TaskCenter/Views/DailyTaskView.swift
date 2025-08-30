@@ -42,7 +42,7 @@ struct DailyTaskView: View {
                         ZStack (alignment: .top){
                             // 根据任务完成状态显示不同图片
                             Group {
-                                let currentCount = viewModel.taskProgressViewModel.todayAdCount
+                                let currentCount = viewModel.dailyViewCount
                                 
                                 if index < currentCount {
                                     // 已完成状态
@@ -139,8 +139,8 @@ struct DailyTaskView: View {
                 
                 // 完成按钮
                 Button(action: {
-                    if viewModel.canWatchDailyAd && !viewModel.taskProgressViewModel.isReceivingTask {
-                        viewModel.watchDailyTaskAdvertisement()
+                    if viewModel.canWatchDailyAd {
+                        viewModel.watchDailyTaskAd()
                     }
                 }) {
                     ZStack {
@@ -165,18 +165,8 @@ struct DailyTaskView: View {
                         
                         // 按钮文字 - 根据状态显示不同内容
                         Group {
-                            if viewModel.taskProgressViewModel.isReceivingTask {
-                                HStack(spacing: 8) {
-                                    ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                        .scaleEffect(0.8)
-                                    
-                                    Text("领取中...")
-                                        .font(.system(size: 20, weight: .medium))
-                                        .foregroundStyle(.white)
-                                }
-                            } else if !viewModel.canWatchDailyAd {
-                                Text(viewModel.taskProgressViewModel.todayAdCount >= maxTaskCount ? "已完成" : "暂不可用")
+                            if !viewModel.canWatchDailyAd {
+                                Text(viewModel.dailyTaskProgress?.currentViewCount ?? 0 >= maxTaskCount ? "已完成" : "暂不可用")
                                     .font(.system(size: 24, weight: .medium))
                                     .foregroundStyle(.white.opacity(0.7))
                             } else {
@@ -187,10 +177,9 @@ struct DailyTaskView: View {
                         }
                     }
                 }
-                .disabled(!viewModel.canWatchDailyAd || viewModel.taskProgressViewModel.isReceivingTask)
-                .scaleEffect(viewModel.canWatchDailyAd && !viewModel.taskProgressViewModel.isReceivingTask ? 1.0 : 0.95)
+                .disabled(!viewModel.canWatchDailyAd)
+                .scaleEffect(viewModel.canWatchDailyAd ? 1.0 : 0.95)
                 .animation(.easeInOut(duration: 0.2), value: viewModel.canWatchDailyAd)
-                .animation(.easeInOut(duration: 0.2), value: viewModel.taskProgressViewModel.isReceivingTask)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
             }

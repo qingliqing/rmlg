@@ -10,7 +10,7 @@ import UIKit
 import Combine
 
 @MainActor
-final class RewardAdViewModel: ObservableObject {
+final class DailyTaskViewModel: ObservableObject {
     
     // MARK: - Published Properties
     @Published var isShowingAd = false
@@ -18,6 +18,9 @@ final class RewardAdViewModel: ObservableObject {
     // MARK: - Private Properties
     private let rewardAdManager = RewardAdManager.shared
     private let loadingManager = PureLoadingManager.shared
+    
+    // 广告位配置
+    private let defaultSlotID: String
     
     // 广告加载超时定时器
     private var adLoadingTimer: Timer?
@@ -27,14 +30,19 @@ final class RewardAdViewModel: ObservableObject {
     var onAdWatchCompleted: (() async -> Void)?
     
     // MARK: - Initialization
-    init() {
+    init(slotID: String = "103510224") {
+        self.defaultSlotID = slotID
         setupRewardAdManager()
     }
     
     // MARK: - Private Methods
     private func setupRewardAdManager() {
-        rewardAdManager.delegate = self
-        rewardAdManager.preloadAd()
+        rewardAdManager.setEventHandler(for: defaultSlotID) { [weak self] event in
+            Task { @MainActor in
+                self?.handleRewardAdEvent(event)
+            }
+        }
+        rewardAdManager.preloadAd(for: defaultSlotID)
     }
     
     // MARK: - Public Methods
@@ -71,13 +79,64 @@ final class RewardAdViewModel: ObservableObject {
         guard let windowScene = UIApplication.shared.connectedScenes
             .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
               let window = windowScene.windows.first(where: \.isKeyWindow),
-              let viewController = window.rootViewController else {
+              let viewController = window.rootViewController?.topMostViewController() else {
             stopAdLoading()
             loadingManager.showError(message: "无法获取视图控制器")
             return
         }
         
-        rewardAdManager.showAd(from: viewController)
+        rewardAdManager.showAd(for: defaultSlotID, from: viewController)
+    }
+    
+    // MARK: - Event Handler (替代原来的 Delegate 方法)
+    private func handleRewardAdEvent(_ event: RewardAdEvent) {
+        switch event {
+        case .loadSuccess:
+            // 广告加载成功，等待展示
+            break
+            
+        case .loadFailed(let error):
+            stopAdLoading()
+            loadingManager.showError(message: "广告加载失败")
+            
+        case .showSuccess:
+            stopAdLoading()
+            isShowingAd = true
+            
+        case .showFailed(let error):
+            stopAdLoading()
+            isShowingAd = false
+            loadingManager.showError(message: "广告展示失败")
+            
+        case .clicked:
+            // 用户点击了广告
+            break
+            
+        case .closed:
+            isShowingAd = false
+            
+        case .rewardSuccess(let verified):
+            isShowingAd = false
+            if verified {
+                Task {
+                    await onAdWatchCompleted?()
+                }
+            } else {
+                loadingManager.showError(message: "广告奖励验证失败")
+            }
+            
+        case .rewardFailed(let error):
+            isShowingAd = false
+            loadingManager.showError(message: "广告奖励发放失败")
+            
+        case .playFailed(let error):
+            isShowingAd = false
+            loadingManager.showError(message: "广告播放失败")
+            
+        default:
+            // 其他事件暂不处理
+            break
+        }
     }
     
     // MARK: - Deinitializer
@@ -86,69 +145,21 @@ final class RewardAdViewModel: ObservableObject {
     }
 }
 
-// MARK: - RewardAdManagerDelegate
-extension RewardAdViewModel: RewardAdManagerDelegate {
-    
-    nonisolated func rewardAdDidLoad() {
-        // 广告加载成功，等待展示
-    }
-    
-    nonisolated func rewardAdDidFailToLoad(error: Error?) {
-        Task { @MainActor in
-            stopAdLoading()
-            loadingManager.showError(message: "广告加载失败")
+// MARK: - UIViewController Extension (Helper)
+private extension UIViewController {
+    func topMostViewController() -> UIViewController {
+        if let presented = presentedViewController {
+            return presented.topMostViewController()
         }
-    }
-    
-    nonisolated func rewardAdDidShow() {
-        Task { @MainActor in
-            stopAdLoading()
-            isShowingAd = true
+        
+        if let navigationController = self as? UINavigationController {
+            return navigationController.visibleViewController?.topMostViewController() ?? navigationController
         }
-    }
-    
-    nonisolated func rewardAdDidFailToShow(error: Error) {
-        Task { @MainActor in
-            stopAdLoading()
-            isShowingAd = false
-            loadingManager.showError(message: "广告展示失败")
+        
+        if let tabBarController = self as? UITabBarController {
+            return tabBarController.selectedViewController?.topMostViewController() ?? tabBarController
         }
-    }
-    
-    nonisolated func rewardAdDidClick() {
-        // 用户点击了广告
-    }
-    
-    nonisolated func rewardAdDidClose() {
-        Task { @MainActor in
-            isShowingAd = false
-        }
-    }
-    
-    nonisolated func rewardAdDidRewardUser(verified: Bool) {
-        Task { @MainActor in
-            isShowingAd = false
-            if verified {
-                await onAdWatchCompleted?()
-            } else {
-                loadingManager.showError(message: "广告奖励验证失败")
-            }
-        }
-    }
-    
-    nonisolated func rewardAdDidFailToReward(error: Error?) {
-        Task { @MainActor in
-            isShowingAd = false
-            loadingManager.showError(message: "广告奖励发放失败")
-        }
-    }
-    
-    nonisolated func rewardAdDidFinishPlaying(error: Error?) {
-        Task { @MainActor in
-            isShowingAd = false
-            if error != nil {
-                loadingManager.showError(message: "广告播放失败")
-            }
-        }
+        
+        return self
     }
 }

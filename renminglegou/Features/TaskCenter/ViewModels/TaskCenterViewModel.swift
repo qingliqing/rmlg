@@ -22,7 +22,7 @@ class TaskCenterViewModel: ObservableObject {
     // MARK: - Sub ViewModels
     let bannerAdViewModel = BannerAdViewModel()
     let taskProgressViewModel = TaskProgressViewModel()
-    let rewardAdViewModel = RewardAdViewModel()
+    let dailyVM = DailyTaskViewModel()
     let swipeVideoViewModel = SwipeTaskViewModel()
     
     // MARK: - Task Config Properties
@@ -32,6 +32,11 @@ class TaskCenterViewModel: ObservableObject {
     @Published var maxPoints: AdPoints?
     @Published var adRecords: Int = 0
     @Published var isSubmittingBrandTask = false
+    
+    @Published var dailyViewCount: Int = 0
+    @Published var dailyTaskProgress: AdTaskProgress?
+    @Published var swipeTaskProgress: AdTaskProgress?
+    @Published var brandTaskProgress: AdTaskProgress?
     
     // MARK: - Private Properties
     private let taskService = TaskCenterService.shared
@@ -55,18 +60,20 @@ class TaskCenterViewModel: ObservableObject {
         return adConfig?.tasks?.first { $0.id == brandTaskType }
     }
     
-    var todayAdCount: Int {
-        return taskProgressViewModel.todayAdCount
+    // 数据加载方法调整
+    private func loadAllTaskProgress() async throws {
+        let taskTypes = [dailyTaskType, swipeTaskType, brandTaskType]
+        try await taskProgressViewModel.loadTaskProgresses(taskTypes: taskTypes)
     }
     
     var canWatchDailyAd: Bool {
         guard let task = dailyTask else { return false }
-        let currentCount = taskProgressViewModel.dailyTaskProgress?.currentViewCount ?? 0
-        return currentCount < task.totalAdCount && !loadingManager.isShowingLoading && !rewardAdViewModel.isShowingAd
+        let currentCount = dailyTaskProgress?.currentViewCount ?? 0
+        return currentCount < task.totalAdCount && !loadingManager.isShowingLoading && !dailyVM.isShowingAd
     }
     
     var isHandlingAd: Bool {
-        return loadingManager.isShowingLoading || rewardAdViewModel.isShowingAd
+        return loadingManager.isShowingLoading || dailyVM.isShowingAd
     }
     
     // MARK: - Initialization
@@ -79,7 +86,7 @@ class TaskCenterViewModel: ObservableObject {
     
     private func setupSubViewModels() {
         // 设置激励广告完成回调
-        rewardAdViewModel.onAdWatchCompleted = { [weak self] in
+        dailyVM.onAdWatchCompleted = { [weak self] in
             await self?.handleDailyAdWatchCompleted()
         }
         
@@ -98,13 +105,15 @@ class TaskCenterViewModel: ObservableObject {
             
             async let adConfigTask: () = loadAdConfig()
             async let rewardConfigsTask: () = loadRewardConfigs()
-            async let taskProgressTask: () = taskProgressViewModel.loadAllTaskProgress()
+            async let taskProgressTask: () = loadAllTaskProgress()
             async let maxPointsTask: () = loadMaxPoints()
             async let adRecordsTask: () = loadAdRecords()
             
             do {
                 _ = try await (adConfigTask, rewardConfigsTask, taskProgressTask, maxPointsTask, adRecordsTask)
                 isLoading = false
+                updateTaskProgress()
+                
             } catch {
                 isLoading = false
                 showErrorMessage("数据加载失败: \(error.localizedDescription)")
@@ -134,19 +143,8 @@ class TaskCenterViewModel: ObservableObject {
     
     // MARK: - Daily Task Methods
     
-    func watchDailyTaskAdvertisement() {
-        rewardAdViewModel.watchRewardAd()
-    }
-    
-    func receiveDailyReward() {
-        Task {
-            do {
-                try await taskProgressViewModel.refreshTaskProgress(taskType: dailyTaskType)
-                loadingManager.showSuccess(message: "每日任务奖励领取成功！")
-            } catch {
-                loadingManager.showError(message: "领取奖励失败")
-            }
-        }
+    func watchDailyTaskAd() {
+        dailyVM.watchRewardAd()
     }
     
     private func handleDailyAdWatchCompleted() async {
@@ -154,17 +152,24 @@ class TaskCenterViewModel: ObservableObject {
             loadingManager.showLoading(style: .pulse)
             
             try await taskProgressViewModel.completeViewTask(taskType: dailyTaskType, adFinishFlag: "ad_completed")
+            
+            // 2. 刷新进度并领取奖励（合并操作）
             try await taskProgressViewModel.refreshTaskProgress(taskType: dailyTaskType)
             
-            receiveDailyReward()
-            // 预加载下一个广告
-            RewardAdManager.shared.preloadAd()
+            updateTaskProgress()
             
             loadingManager.showSuccess(message: "广告观看完成，积分已发放！")
             
         } catch {
             loadingManager.showError(message: "处理广告完成失败")
         }
+    }
+    
+    private func updateTaskProgress() {
+        dailyViewCount = taskProgressViewModel.getCurrentViewCount(for: dailyTaskType)
+        dailyTaskProgress = taskProgressViewModel.getProgress(for: dailyTaskType)
+        swipeTaskProgress = taskProgressViewModel.getProgress(for: swipeTaskType)
+        brandTaskProgress = taskProgressViewModel.getProgress(for: brandTaskType)
     }
     
     // MARK: - Swipe Task Methods

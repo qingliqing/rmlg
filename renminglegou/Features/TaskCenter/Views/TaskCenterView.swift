@@ -67,7 +67,7 @@ struct TaskCenterView: View {
                 RewardPopupView(
                     task: viewModel.swipeTask,
                     onStartAction: {
-                        viewModel.rewardAdViewModel.watchRewardAd()
+                        viewModel.dailyVM.watchRewardAd()
                     }
                 )
                 .ignoresSafeArea(.container, edges: .bottom)
