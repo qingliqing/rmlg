@@ -9,7 +9,6 @@ import SwiftUI
 
 struct BrandTaskView: View {
     @ObservedObject var viewModel: TaskCenterViewModel
-    @State private var isSubmitting = false
     
     // 回调闭包
     let onSubmitCompleted: () -> Void
@@ -45,8 +44,6 @@ struct BrandTaskView: View {
     
     // MARK: - Private Methods
     private func handleBrandTaskAction() {
-        guard !isSubmitting else { return }
-        isSubmitting = true
         // 回调给上层
         onSubmitCompleted()
     }

@@ -7,70 +7,140 @@
 
 import Foundation
 import Combine
+import UIKit
 
 @MainActor
 final class SwipeTaskViewModel: ObservableObject {
     
     // MARK: - Published Properties
-    @Published var isWatchingVideo = false
-    @Published var videoProgress: Double = 0.0
+    @Published var isShowingAd = false
     
     // MARK: - Private Properties
+    private let rewardAdManager = RewardAdManager.shared
     private let loadingManager = PureLoadingManager.shared
-    private var videoTimer: Timer?
-    private let videoDuration: TimeInterval = 15.0
+    
+    // 广告位配置
+    private let defaultSlotID: String
+    
+    // 广告加载超时定时器
+    private var adLoadingTimer: Timer?
+    private let adLoadingTimeoutDuration: TimeInterval = 10.0
     
     // MARK: - Callbacks
-    var onVideoCompleted: (() async -> Void)?
+    var onAdWatchCompleted: (() async -> Void)?
     
-    // MARK: - Public Methods
-    
-    /// 开始刷视频
-    func startSwipeVideo() {
-        guard !isWatchingVideo else { return }
-        
-        loadingManager.showLoading(style: .dots)
-        loadingManager.hideLoading()
-        
-        startVideoProgress()
-    }
-    
-    /// 停止刷视频
-    func stopSwipeVideo() {
-        isWatchingVideo = false
-        videoProgress = 0.0
-        videoTimer?.invalidate()
-        videoTimer = nil
+    // MARK: - Initialization
+    init(slotID: String = "103510179") {
+        self.defaultSlotID = slotID
+        setupRewardAdManager()
     }
     
     // MARK: - Private Methods
-    
-    private func startVideoProgress() {
-        isWatchingVideo = true
-        videoProgress = 0.0
-        
-        videoTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+    private func setupRewardAdManager() {
+        rewardAdManager.setEventHandler(for: defaultSlotID) { [weak self] event in
             Task { @MainActor in
-                self?.updateVideoProgress()
+                self?.handleRewardAdEvent(event)
+            }
+        }
+        rewardAdManager.preloadAd(for: defaultSlotID)
+    }
+    
+    // MARK: - Public Methods
+    
+    /// 观看激励广告
+    func watchRewardAd() {
+        startAdLoading()
+        showRewardAd()
+    }
+    
+    // MARK: - Private Ad Loading Methods
+    private func startAdLoading() {
+        loadingManager.showLoading(style: .circle)
+        
+        adLoadingTimer = Timer.scheduledTimer(withTimeInterval: adLoadingTimeoutDuration, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                self?.handleAdLoadingTimeout()
             }
         }
     }
     
-    private func updateVideoProgress() {
-        videoProgress += 0.1 / videoDuration
+    private func stopAdLoading() {
+        loadingManager.hideLoading()
+        adLoadingTimer?.invalidate()
+        adLoadingTimer = nil
+    }
+    
+    private func handleAdLoadingTimeout() {
+        stopAdLoading()
+        loadingManager.showError(message: "广告加载超时，请稍后重试")
+    }
+    
+    private func showRewardAd() {
+        guard let windowScene = UIApplication.shared.connectedScenes
+            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+              let window = windowScene.windows.first(where: \.isKeyWindow),
+              let viewController = window.rootViewController?.topMostViewController() else {
+            stopAdLoading()
+            loadingManager.showError(message: "无法获取视图控制器")
+            return
+        }
         
-        if videoProgress >= 1.0 {
-            videoProgress = 1.0
-            stopSwipeVideo()
+        rewardAdManager.showAd(for: defaultSlotID, from: viewController)
+    }
+    
+    // MARK: - Event Handler (替代原来的 Delegate 方法)
+    private func handleRewardAdEvent(_ event: RewardAdEvent) {
+        switch event {
+        case .loadSuccess:
+            // 广告加载成功，等待展示
+            break
             
-            Task {
-                await onVideoCompleted?()
+        case .loadFailed(let error):
+            stopAdLoading()
+            loadingManager.showError(message: "广告加载失败")
+            
+        case .showSuccess:
+            stopAdLoading()
+            isShowingAd = true
+            
+        case .showFailed(let error):
+            stopAdLoading()
+            isShowingAd = false
+            loadingManager.showError(message: "广告展示失败")
+            
+        case .clicked:
+            // 用户点击了广告
+            break
+            
+        case .closed:
+            isShowingAd = false
+            
+        case .rewardSuccess(let verified):
+            isShowingAd = false
+            if verified {
+                Task {
+                    await onAdWatchCompleted?()
+                }
+            } else {
+                loadingManager.showError(message: "广告奖励验证失败")
             }
+            
+        case .rewardFailed(let error):
+            isShowingAd = false
+            loadingManager.showError(message: "广告奖励发放失败")
+            
+        case .playFailed(let error):
+            isShowingAd = false
+            loadingManager.showError(message: "广告播放失败")
+            
+        default:
+            // 其他事件暂不处理
+            break
         }
     }
     
     // MARK: - Deinitializer
     deinit {
-        videoTimer?.invalidate()
+        adLoadingTimer?.invalidate()
     }
 }

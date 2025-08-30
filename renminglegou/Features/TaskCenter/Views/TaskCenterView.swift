@@ -67,7 +67,7 @@ struct TaskCenterView: View {
                 RewardPopupView(
                     task: viewModel.swipeTask,
                     onStartAction: {
-                        viewModel.dailyVM.watchRewardAd()
+                        viewModel.swipeVM.watchRewardAd()
                     }
                 )
                 .ignoresSafeArea(.container, edges: .bottom)
@@ -213,7 +213,19 @@ struct TaskCenterView: View {
                 if viewModel.brandTask?.hasJumpLink ?? false,
                    let urlString = viewModel.brandTask?.jumpLink
                 {
-                    navigationManager.navigateTo(.webView(url:URL(string: urlString)!))
+                    // 获取用户 token 并进行 URL 编码
+                    let userToken = UserModel.shared.token
+                    let encodedToken = userToken.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? userToken
+                    
+                    // 替换占位符
+                    let finalURLString = urlString.replacingOccurrences(of: "{1}", with: encodedToken)
+                    
+                    // 跳转
+                    if let finalURL = URL(string: finalURLString) {
+                        navigationManager.navigateTo(.webView(url: finalURL,showBackButton: true))
+                    } else {
+                        print("❌ URL 格式错误: \(finalURLString)")
+                    }
                 }
             }
         }

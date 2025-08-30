@@ -23,7 +23,7 @@ class TaskCenterViewModel: ObservableObject {
     let bannerAdViewModel = BannerAdViewModel()
     let taskProgressViewModel = TaskProgressViewModel()
     let dailyVM = DailyTaskViewModel()
-    let swipeVideoViewModel = SwipeTaskViewModel()
+    let swipeVM = SwipeTaskViewModel()
     
     // MARK: - Task Config Properties
     @Published var adConfig: AdConfig?
@@ -91,8 +91,8 @@ class TaskCenterViewModel: ObservableObject {
         }
         
         // 设置刷视频完成回调
-        swipeVideoViewModel.onVideoCompleted = { [weak self] in
-            await self?.handleSwipeVideoCompletion()
+        swipeVM.onAdWatchCompleted = { [weak self] in
+            await self?.handleSwipeAdWatchCompleted()
         }
     }
     
@@ -174,12 +174,23 @@ class TaskCenterViewModel: ObservableObject {
     
     // MARK: - Swipe Task Methods
     
-    func startSwipeVideo() {
-        swipeVideoViewModel.startSwipeVideo()
-    }
-    
-    private func handleSwipeVideoCompletion() async {
-        
+    /// 刷刷赚广告完成
+    private func handleSwipeAdWatchCompleted() async {
+        do {
+            loadingManager.showLoading(style: .pulse)
+            
+            try await taskProgressViewModel.completeViewTask(taskType: swipeTaskType, adFinishFlag: "ad_completed")
+            
+            // 2. 刷新进度并领取奖励（合并操作）
+            try await taskProgressViewModel.refreshTaskProgress(taskType: swipeTaskType)
+            
+            updateTaskProgress()
+            
+            loadingManager.showSuccess(message: "广告观看完成，积分已发放！")
+            
+        } catch {
+            loadingManager.showError(message: "处理广告完成失败")
+        }
     }
     
     // MARK: - Brand Task Methods

@@ -7,11 +7,9 @@
 
 import SwiftUI
 
-import SwiftUI
-
 enum NavigationDestination: Hashable {
     case taskCenter(params: [String: AnyHashable]? = nil)
-    case webView(url: URL)
+    case webView(url: URL, title: String = "", showBackButton: Bool = true)
 }
 
 @available(iOS 16.0, *)

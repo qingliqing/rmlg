@@ -96,6 +96,7 @@ final class DailyTaskViewModel: ObservableObject {
             break
             
         case .loadFailed(let error):
+            print("广告加载失败: \(error)")
             stopAdLoading()
             loadingManager.showError(message: "广告加载失败")
             
@@ -104,6 +105,7 @@ final class DailyTaskViewModel: ObservableObject {
             isShowingAd = true
             
         case .showFailed(let error):
+            print("广告展示失败: \(error)")
             stopAdLoading()
             isShowingAd = false
             loadingManager.showError(message: "广告展示失败")
@@ -122,14 +124,17 @@ final class DailyTaskViewModel: ObservableObject {
                     await onAdWatchCompleted?()
                 }
             } else {
+                print("广告奖励验证失败")
                 loadingManager.showError(message: "广告奖励验证失败")
             }
             
         case .rewardFailed(let error):
+            print("广告奖励发放失败: \(String(describing: error))")
             isShowingAd = false
             loadingManager.showError(message: "广告奖励发放失败")
             
         case .playFailed(let error):
+            print("广告播放失败: \(error)")
             isShowingAd = false
             loadingManager.showError(message: "广告播放失败")
             
@@ -146,7 +151,7 @@ final class DailyTaskViewModel: ObservableObject {
 }
 
 // MARK: - UIViewController Extension (Helper)
-private extension UIViewController {
+extension UIViewController {
     func topMostViewController() -> UIViewController {
         if let presented = presentedViewController {
             return presented.topMostViewController()
