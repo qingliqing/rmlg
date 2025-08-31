@@ -56,10 +56,6 @@ struct TaskCenterView: View {
         )
         .onAppear {
             setupNavigationBarAppearance()
-            // 设置默认选中的tab
-            if let firstTab = availableTabs.first {
-                selectedTab = firstTab
-            }
         }
         .onChange(of: viewModel.isLoading) { _ in
             // 当任务配置加载完成后，确保选中的tab是有效的
