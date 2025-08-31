@@ -35,6 +35,7 @@ struct TaskCenterView: View {
                 .padding(.top, 20)
                 .padding(.horizontal, 4)
             }
+            .padding(.bottom,DeviceConsts.safeAreaBottom + 20)
             .scrollIndicators(.hidden)
         }
         .padding(.top, DeviceConsts.totalHeight + 20)

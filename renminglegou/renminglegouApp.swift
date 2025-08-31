@@ -13,53 +13,56 @@ import BUAdTestMeasurement
 
 @main
 struct renminglegouApp: App {
+    @StateObject private var adSDKManager = AdSDKManager.shared
     @StateObject private var navigationManager = NavigationManager()
+    
     init() {
-        setupBUAdSDK()
+        adSDKManager.startSDK() // 初始化 SDK
     }
     
     var body: some Scene {
         WindowGroup {
             ZStack {
-                SplashView()
-                // 全局Loading覆盖层
+                // ✅ 只有 SDK 初始化成功后才显示 SplashView
+                if adSDKManager.isInitialized {
+                    SplashView()
+                } else {
+                    // 初始化未完成前显示白屏或默认启动图
+                    Color.white
+                        .ignoresSafeArea()
+                }
+                
                 PureSwiftUILoadingView()
-            }.environmentObject(navigationManager)
-            
+            }
+            .environmentObject(navigationManager)
+            .environmentObject(adSDKManager)
         }
     }
+}
+
+class AdSDKManager: ObservableObject {
+    static let shared = AdSDKManager()
     
-    private func setupBUAdSDK() {
-        /************************** 初始化 **************************/
+    @Published var isInitialized: Bool = false
+    
+    private init() {}
+    
+    func startSDK() {
         let configuration = BUAdSDKConfiguration()
-        
-        // 使用聚合
         configuration.useMediation = true
         configuration.appID = "5706508"
-        
-        // 隐私合规配置
-        // 是否限制个性化广告
-        configuration.mediation.limitPersonalAds = NSNumber(integerLiteral: 0)
-        // 是否限制程序化广告
-        configuration.mediation.limitProgrammaticAds = NSNumber(integerLiteral: 0)
-        // 是否禁止CAID
-        // configuration.mediation.forbiddenCAID = NSNumber(integerLiteral: 0)
-        
-        // 主题模式
-        configuration.themeStatus = NSNumber(integerLiteral: 0)
+        configuration.mediation.limitPersonalAds = 0
+        configuration.mediation.limitProgrammaticAds = 0
+        configuration.themeStatus = 0
         
         #if DEBUG
-        // 配置测试工具
         BUAdTestMeasurementConfiguration().debugMode = true
         #endif
         
-        // 初始化 - 注意这里需要传入 configuration
-        BUAdSDKManager.start(asyncCompletionHandler:{ success, error in
-            if success {
-                print("BUAdSDK 初始化成功")
-                // 处理成功之后的逻辑
-            } else {
-                print("BUAdSDK 初始化失败: \(error?.localizedDescription ?? "未知错误")")
+        BUAdSDKManager.start(syncCompletionHandler: { success, error in
+            DispatchQueue.main.async {
+                self.isInitialized = success
+                print(success ? "SDK 初始化成功" : "SDK 初始化失败: \(error?.localizedDescription ?? "未知错误")")
             }
         })
     }

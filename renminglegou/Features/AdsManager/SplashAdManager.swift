@@ -44,7 +44,7 @@ class SplashAdManager: NSObject, ObservableObject {
         slot.id = adSlotID
         
         // 创建开屏广告
-        splashAd = BUSplashAd(slot: slot, adSize: CGSize.zero)
+        splashAd = BUSplashAd(slot: slot, adSize: UIScreen.main.bounds.size)
         splashAd?.delegate = self
         
         // 开始加载广告
@@ -63,13 +63,12 @@ class SplashAdManager: NSObject, ObservableObject {
     
     /// 获取根视图控制器
     private func getRootViewController() -> UIViewController? {
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let window = windowScene.windows.first(where: { $0.isKeyWindow }),
-              let rootViewController = window.rootViewController else {
-            print("❌ 无法获取根视图控制器")
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = scene.windows.first(where: \.isKeyWindow) else {
+            print("🗑️ 根视图控制器获取失败")
             return nil
         }
-        return rootViewController
+        return window.rootViewController ?? window.rootViewController?.children.first
     }
     
     /// 通知广告事件
