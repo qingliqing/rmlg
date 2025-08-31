@@ -55,10 +55,6 @@ struct SwipeTaskView: View {
                                     Text(isSwipeTaskCompleted ? "已完成" : "暂不可用")
                                         .font(.system(size: 24, weight: .medium))
                                         .foregroundStyle(.white.opacity(0.7))
-                                } else {
-                                    Text("开始")
-                                        .font(.system(size: 28, weight: .bold))
-                                        .foregroundStyle(.white)
                                 }
                             }
                         }

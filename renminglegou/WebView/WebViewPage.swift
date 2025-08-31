@@ -16,7 +16,7 @@ struct WebViewPage: View {
     @EnvironmentObject var navigationManager: NavigationManager
     
     // 初始化方法 - 添加可选参数
-    init(url: URL, defaultTitle: String = "", showBackButton: Bool = true) {
+    init(url: URL, defaultTitle: String = "", showBackButton: Bool = false) {
         self.url = url
         self.defaultTitle = defaultTitle
         self.showBackButton = showBackButton
@@ -49,7 +49,7 @@ struct WebViewPage: View {
                     Text(pageTitle.isEmpty ? defaultTitle : pageTitle)
                         .font(.headline)
                         .lineLimit(1)
-                        .frame(maxWidth: .infinity, alignment: showBackButton ? .center : .leading)
+                        .frame(maxWidth: .infinity, alignment: .center)
                     
                     // 占位符（保持布局平衡）
                     if showBackButton {
@@ -60,7 +60,6 @@ struct WebViewPage: View {
                 .padding(.horizontal)
                 .padding(.vertical, 8)
                 .background(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.1), radius: 1, y: 1)
                 
                 // WebView
                 WebViewWrapper(

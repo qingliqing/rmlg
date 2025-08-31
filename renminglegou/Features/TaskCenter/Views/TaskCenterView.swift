@@ -15,6 +15,10 @@ struct TaskCenterView: View {
     @Environment(\.presentationMode) var presentationMode
     @State private var showRewardPopup = false
     
+    // 添加广告高度状态变量
+    @State private var nativeAdHeight: CGFloat = 160 // 初始预估高度
+    @State private var isAdLoaded: Bool = false
+    
     var body: some View {
         ZStack {
             // Background image
@@ -31,6 +35,7 @@ struct TaskCenterView: View {
                 .padding(.top, 20)
                 .padding(.horizontal, 4)
             }
+            .scrollIndicators(.hidden)
         }
         .padding(.top, DeviceConsts.totalHeight + 20)
         .navigationTitle("任务中心")
@@ -129,6 +134,10 @@ struct TaskCenterView: View {
                 .frame(height: 300)
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
                 .animation(.easeInOut(duration: 0.3), value: selectedTab)
+                
+                // 信息流广告 - 使用动态高度
+                nativeAdSection
+                
             } else {
                 // 加载状态或无数据状态
                 if viewModel.isLoading {
@@ -142,6 +151,21 @@ struct TaskCenterView: View {
                         .frame(height: 300)
                 }
             }
+        }.padding(.bottom, DeviceConsts.safeAreaBottom)
+    }
+    
+    @ViewBuilder
+    private var nativeAdSection: some View {
+        VStack(spacing: 0) {
+            // 信息流广告
+            NativeAdView(slotId: "103509927") { height in
+                DispatchQueue.main.async {
+                    nativeAdHeight = height
+                }
+            }
+            .frame(height: nativeAdHeight)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
         }
     }
     
