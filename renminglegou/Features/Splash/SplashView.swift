@@ -92,10 +92,10 @@ struct SplashView: View {
             
         case .showingAd:
             // 开屏广告显示中（黑色背景，广告在上层显示）
-            Color.black.ignoresSafeArea(.all)
+            splashContent
             
         case .finished:
-            Color.clear
+            splashContent
         }
     }
     
@@ -281,6 +281,7 @@ struct SplashView: View {
             return
         }
         
+        enterWebView()
         print("✅ 预加载的开屏广告显示成功")
     }
     

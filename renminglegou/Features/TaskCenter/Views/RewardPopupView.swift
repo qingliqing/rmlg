@@ -31,12 +31,19 @@ struct RewardPopupView: View {
             
             // 文本内容覆盖层
             VStack(spacing: 12) {
+                
+                // 顶部空间
+                Spacer()
+                    .frame(height: imageHeight * 0.3)
+                
                 // MARK: - Title (level1)
                 if let title = task?.taskDescription?.level1?.displayText, !title.isEmpty {
                     Text(title)
                         .font(.system(size: task?.taskDescription?.level1?.displayFontSize ?? 32, weight: .bold))
                         .foregroundColor(.black)
-                        .padding(.top, imageHeight * 0.3)
+                        .lineLimit(nil)
+                        .padding(.horizontal, 4)
+                        .padding(.bottom, 10)
                 }
                 
                 // MARK: - Level2 ~ Level4

@@ -25,16 +25,12 @@ struct DailyTaskView: View {
                         Text("每日任务")
                             .font(.system(size: 24, weight: .semibold))
                             .foregroundColor(.white)
-                        
-                        Text("看广告赚金币")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.7))
                     }
                     
                     Spacer()
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 16)
+                .padding(.vertical, 16)
                 
                 // 任务进度 - 使用从接口获取的任务总数
                 HStack(spacing: 15) {

@@ -23,6 +23,18 @@ struct BrandTaskView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16))
             
             VStack(spacing: 16) {
+                
+                if let title = viewModel.brandTask?.taskDescription?.level1?.displayText, !title.isEmpty {
+                    Text(title)
+                        .font(.system(size: viewModel.brandTask?.taskDescription?.level1?.displayFontSize ?? 24, weight: .bold))
+                        .foregroundColor(.black.opacity(0.6))
+                        .lineLimit(nil)
+                        .lineSpacing(8)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 36)
+                }
+                
                 Spacer()
                 
                 // 任务提交按钮
