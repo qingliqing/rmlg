@@ -106,7 +106,7 @@ extension SplashAdManager: BUSplashAdDelegate {
     // 加载失败
     func splashAdLoadFail(_ splashAd: BUSplashAd, error: BUAdError?) {
         let errorMessage = error?.localizedDescription ?? "未知错误"
-        print("❌ 开屏广告加载失败: \(errorMessage)")
+        print("❌ 开屏广告加载失败:\(error?.code ?? 0) \(errorMessage)")
         
         DispatchQueue.main.async {
             self.isLoading = false

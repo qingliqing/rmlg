@@ -22,6 +22,18 @@ struct NetworkAPI {
     static let timeout: TimeInterval = 30
 }
 
+// MARK: - 启动页API
+enum SplashAPI {
+    case getSplashConfig
+    
+    var path: String {
+        switch self {
+        case .getSplashConfig:
+            return "system/api/config/start"
+        }
+    }
+}
+
 // MARK: - 广告任务API端点
 
 /// 广告任务相关的API端点枚举
