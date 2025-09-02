@@ -22,7 +22,7 @@ extension H5MessageHandler {
         print("用户登出")
     }
     
-    static func handleShareAiVideo(_ body: Any, selfVC: UIViewController?) {
+    static func handleOpenUnionPay(_ body: Any, selfVC: UIViewController?) {
         let token = DataUtil.stringOf(body, defaultValue: "")
         showShareView(token: token, title: "", description: "")
     }

@@ -9,10 +9,6 @@ import SwiftUI
 import UIKit
 import AdSupport
 
-#if DEBUG
-import BUAdTestMeasurement
-#endif
-
 class BUAdTestHelper {
     
     /// 显示广告测试工具
@@ -28,7 +24,7 @@ class BUAdTestHelper {
         }
         
         // 显示测试界面
-        BUAdTestMeasurementManager.showTestMeasurement(with: rootViewController)
+//        BUAdTestMeasurementManager.showTestMeasurement(with: rootViewController)
         #else
         print("测试工具仅在 Debug 模式下可用")
         #endif

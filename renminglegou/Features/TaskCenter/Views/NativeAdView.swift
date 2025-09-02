@@ -246,13 +246,3 @@ struct NativeAdView: UIViewRepresentable {
     }
 }
 
-// MARK: - SwiftUI 预览
-struct NativeAdView_Previews: PreviewProvider {
-    static var previews: some View {
-        NativeAdView(slotId: "103509927") { height in
-            print("预览模式下广告高度变化: \(height)")
-        }
-        .padding(.horizontal, 20)
-        .background(Color.gray.opacity(0.1))
-    }
-}

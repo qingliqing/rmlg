@@ -14,6 +14,7 @@ struct TaskCenterView: View {
     @State private var selectedTab: TaskTab = .daily
     @Environment(\.presentationMode) var presentationMode
     @State private var showRewardPopup = false
+    @State private var shouldShowAdAfterDismiss = false
     
     // 添加广告高度状态变量
     @State private var nativeAdHeight: CGFloat = 160 // 初始预估高度
@@ -69,7 +70,8 @@ struct TaskCenterView: View {
                 RewardPopupView(
                     task: viewModel.swipeTask,
                     onStartAction: {
-                        viewModel.swipeVM.watchRewardAd()
+                        showRewardPopup = false
+                        shouldShowAdAfterDismiss = true
                     }
                 )
                 .ignoresSafeArea(.container, edges: .bottom)
@@ -83,6 +85,15 @@ struct TaskCenterView: View {
                     .closeOnTap(false)
                     .closeOnTapOutside(true)
                     .allowTapThroughBG(false)
+                    .dismissCallback { dismissSource in
+                        DispatchQueue.main.async {
+                            if shouldShowAdAfterDismiss == true {
+                                // 用户点击了展示广告按钮后隐藏的
+                                shouldShowAdAfterDismiss = false
+                                viewModel.swipeVM.watchRewardAd()
+                            }
+                        }
+                    }
             }
         )
     }

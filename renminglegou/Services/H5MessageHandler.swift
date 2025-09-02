@@ -17,8 +17,8 @@ class H5MessageHandler: NSObject {
             handleLogin(message.body)
         case "onLogoutEvent":
             handleLogout()
-        case "shareAiVideo":
-            handleShareAiVideo(message.body, selfVC: selfVC)
+        case "openUnionPay":
+            handleOpenUnionPay(message.body, selfVC: selfVC)
         case "openSkit":
             handleOpenSkit(selfVC: selfVC)
         case "openVidel":

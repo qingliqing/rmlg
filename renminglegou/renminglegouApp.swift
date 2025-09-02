@@ -7,9 +7,6 @@
 
 import SwiftUI
 import BUAdSDK
-#if DEBUG
-import BUAdTestMeasurement
-#endif
 
 @main
 struct renminglegouApp: App {
@@ -54,10 +51,6 @@ class AdSDKManager: ObservableObject {
         configuration.mediation.limitPersonalAds = 0
         configuration.mediation.limitProgrammaticAds = 0
         configuration.themeStatus = 0
-        
-        #if DEBUG
-        BUAdTestMeasurementConfiguration().debugMode = true
-        #endif
         
         BUAdSDKManager.start(syncCompletionHandler: { success, error in
             DispatchQueue.main.async {
