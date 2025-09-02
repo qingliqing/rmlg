@@ -8,83 +8,62 @@
 import SwiftUI
 
 struct WebViewPage: View {
-    let url: URL
+    @State private var pageTitle: String = ""
+    @State private var currentURL: URL
+    @StateObject private var authState = AuthenticationState.shared
+
     let defaultTitle: String
     let showBackButton: Bool
-    
-    @State private var pageTitle: String = ""
-    @EnvironmentObject var navigationManager: NavigationManager
-    
-    // 初始化方法 - 添加可选参数
-    init(url: URL, defaultTitle: String = "", showBackButton: Bool = false) {
-        self.url = url
-        self.defaultTitle = defaultTitle
+
+    init(url: URL, title: String = "", showBackButton: Bool = false) {
+        _currentURL = State(initialValue: url)
+        self.defaultTitle = title
         self.showBackButton = showBackButton
     }
-    
+
     var body: some View {
-        NavigationStack(path: $navigationManager.path) {
-            VStack(spacing: 0) {
-                // 自定义导航栏
-                HStack {
-                    // 返回按钮（条件显示）
-                    if showBackButton {
-                        Button(action: {
-                            // 检查导航栈是否有内容
-                            if !navigationManager.path.isEmpty {
-                                navigationManager.path.removeLast()
-                            } else {
-                                // 如果没有导航栈，可以使用其他返回逻辑
-                                // 比如 dismiss 或者其他处理
-                            }
-                        }) {
-                            Image(systemName: "chevron.left")
-                                .font(.title2)
-                                .foregroundColor(.primary)
-                                .frame(width: 44, height: 44)
-                        }
-                    }
-                    
-                    // 标题
-                    Text(pageTitle.isEmpty ? defaultTitle : pageTitle)
-                        .font(.headline)
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                    
-                    // 占位符（保持布局平衡）
-                    if showBackButton {
-                        Spacer()
+        VStack(spacing: 0) {
+            // 自定义导航栏
+            HStack {
+                if showBackButton {
+                    Button {
+                        // 返回逻辑，可以用 Router 或 dismiss
+                        Router.pop()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.title2)
+                            .foregroundColor(.primary)
                             .frame(width: 44, height: 44)
                     }
                 }
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                .background(Color(.systemBackground))
-                
-                // WebView
-                WebViewWrapper(
-                    url: url,
-                    pageTitle: $pageTitle,
-                    navigationManager: navigationManager
-                )
+
+                Text(pageTitle.isEmpty ? defaultTitle : pageTitle)
+                    .font(.headline)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .center)
+
+                if showBackButton {
+                    Spacer()
+                        .frame(width: 44, height: 44)
+                }
             }
-            .navigationBarHidden(true) // 隐藏系统导航栏，使用自定义的
-            .navigationDestination(for: NavigationDestination.self) { destination in
-                destinationView(for: destination)
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .background(Color(.systemBackground))
+
+            // WebView
+            WebViewWrapper(
+                url: currentURL,
+                pageTitle: $pageTitle
+            )
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .onAppear { pageTitle = defaultTitle }
+        .onReceive(authState.$isAuthenticated) { isAuth in
+            if !isAuth {
+                // 登录失效，跳转到登录页面
+                currentURL = URL(string: NetworkAPI.baseWebURL + NetworkAPI.loginWebURL)!
             }
-        }
-        .onAppear {
-            pageTitle = defaultTitle
-        }
-    }
-    
-    @ViewBuilder
-    private func destinationView(for destination: NavigationDestination) -> some View {
-        switch destination {
-        case .taskCenter(_):
-            TaskCenterView()
-        case .webView(url: let url, title: let title, showBackButton: let showBackButton):
-                WebViewPage(url: url, defaultTitle: title, showBackButton: showBackButton)
         }
     }
 }

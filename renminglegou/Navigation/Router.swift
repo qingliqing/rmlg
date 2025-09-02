@@ -3,7 +3,6 @@
 //  renminglegou
 //
 
-// Router.swift
 import SwiftUI
 
 @available(iOS 16.0, *)
@@ -11,7 +10,10 @@ class Router: ObservableObject {
     static let shared = Router()
     
     @Published var path = NavigationPath()
-    @Published private(set) var routes: [AppRoute] = []  // ✅ 显式存放路由栈
+    @Published private(set) var routes: [AppRoute] = []
+    
+    // 添加一个更新触发器
+    @Published private var updateId = UUID()
     
     private init() {}
     
@@ -19,21 +21,27 @@ class Router: ObservableObject {
     
     func push(_ route: AppRoute) {
         routes.append(route)
-        path.append(route)
+        rebuildPath()
     }
     
     func pushReplace(_ route: AppRoute) {
-        if !routes.isEmpty {
-            routes.removeLast()
-            path.removeLast()
+        var newPath = routes
+        if !newPath.isEmpty {
+            newPath.removeLast()
         }
-        push(route)
+        newPath.append(route)
+        
+        // 强制刷新 NavigationStack
+        DispatchQueue.main.async {
+            self.routes = newPath
+            self.path = NavigationPath(newPath)
+        }
     }
     
     func pop() {
         if !routes.isEmpty {
             routes.removeLast()
-            path.removeLast()
+            rebuildPath()
         }
     }
     
@@ -42,33 +50,49 @@ class Router: ObservableObject {
         let removeCount = routes.count - index - 1
         if removeCount > 0 {
             routes.removeLast(removeCount)
-            for _ in 0..<removeCount {
-                path.removeLast()
-            }
+            rebuildPath()
         }
     }
     
     func popToRoot() {
         routes.removeAll()
-        path = NavigationPath()
+        rebuildPath()
     }
     
     func resetTo(_ route: AppRoute) {
         routes = [route]
-        path = NavigationPath()
-        path.append(route)
+        rebuildPath()
+    }
+    
+    // MARK: - 核心修复：重建路径方法
+    private func rebuildPath() {
+        // 使用异步确保状态更新的原子性
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // 完全重建 NavigationPath
+            var newPath = NavigationPath()
+            for route in self.routes {
+                newPath.append(route)
+            }
+            
+            self.path = newPath
+            self.updateId = UUID() // 强制触发 UI 更新
+            
+            print("🔄 路由重建: \(self.routes.map { String(describing: $0) }.joined(separator: " → "))")
+        }
     }
     
     // MARK: - Present / Dismiss (UIKit)
     func present<Content: View>(_ view: Content, animated: Bool = true) {
-        guard let rootVC = getRootViewController() else { return }
+        guard let rootVC = UIUtils.findViewController() else { return }
         let hosting = UIHostingController(rootView: view)
         hosting.modalPresentationStyle = .fullScreen
         rootVC.present(hosting, animated: animated)
     }
     
     func dismiss(animated: Bool = true) {
-        guard let rootVC = getRootViewController() else { return }
+        guard let rootVC = UIUtils.findViewController() else { return }
         rootVC.dismiss(animated: animated)
     }
 }

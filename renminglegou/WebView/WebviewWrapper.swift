@@ -11,7 +11,6 @@ import WebKit
 struct WebViewWrapper: UIViewRepresentable {
     let url: URL
     @Binding var pageTitle: String
-    let navigationManager: NavigationManager
     
     func makeUIView(context: Context) -> WKWebView {
         let userContentController = WKUserContentController()
@@ -43,6 +42,6 @@ struct WebViewWrapper: UIViewRepresentable {
     func updateUIView(_ webView: WKWebView, context: Context) {}
     
     func makeCoordinator() -> WebViewCoordinator {
-        WebViewCoordinator(self, navigationManager: navigationManager)
+        WebViewCoordinator(self)
     }
 }

@@ -7,15 +7,14 @@
 
 import WebKit
 import UIKit
+import SwiftUICore
 
 class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
     var parent: WebViewWrapper
-    let navigationManager: NavigationManager
     weak var currentWebView: WKWebView?
     
-    init(_ parent: WebViewWrapper, navigationManager: NavigationManager) {
+    init(_ parent: WebViewWrapper) {
         self.parent = parent
-        self.navigationManager = navigationManager
     }
     
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -24,7 +23,6 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
             message,
             selfVC: topViewController,
             webView: currentWebView,
-            navigationManager: navigationManager
         )
     }
     

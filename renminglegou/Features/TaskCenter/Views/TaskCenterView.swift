@@ -9,7 +9,6 @@ import SwiftUI
 import PopupView
 
 struct TaskCenterView: View {
-    @EnvironmentObject var navigationManager: NavigationManager
     @StateObject private var viewModel = TaskCenterViewModel()
     @State private var selectedTab: TaskTab = .daily
     @Environment(\.presentationMode) var presentationMode
@@ -254,7 +253,7 @@ struct TaskCenterView: View {
                     
                     // 跳转
                     if let finalURL = URL(string: finalURLString) {
-                        navigationManager.navigateTo(.webView(url: finalURL,showBackButton: true))
+                        Router.push(.webView(url: finalURL,showBackButton: true))
                     } else {
                         print("❌ URL 格式错误: \(finalURLString)")
                     }

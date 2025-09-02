@@ -11,32 +11,34 @@ import BUAdSDK
 @main
 struct renminglegouApp: App {
     @StateObject private var adSDKManager = AdSDKManager.shared
-    @StateObject private var navigationManager = NavigationManager()
-    
+    @StateObject private var router = Router.shared
+
     init() {
         adSDKManager.startSDK() // 初始化 SDK
     }
-    
+
     var body: some Scene {
         WindowGroup {
-            ZStack {
-                // ✅ 只有 SDK 初始化成功后才显示 SplashView
-                if adSDKManager.isInitialized {
-                    SplashView()
-                } else {
-                    // 初始化未完成前显示白屏或默认启动图
-                    Color.white
-                        .ignoresSafeArea()
+            NavigationStack(path: $router.path) {
+                RootView()
+                .navigationDestination(for: AppRoute.self) { route in
+                    switch route {
+                    case .splash:
+                        SplashView()
+                    case .webView(let url, let title, let showBackButton):
+                        WebViewPage(url: url, title: title, showBackButton: showBackButton)
+                    case .taskCenter(_):
+                        TaskCenterView()
+                    }
                 }
-                
-                PureSwiftUILoadingView()
             }
-            .environmentObject(navigationManager)
+            .environmentObject(router)
             .environmentObject(adSDKManager)
         }
     }
 }
 
+// MARK: - 广告 SDK 管理器
 class AdSDKManager: ObservableObject {
     static let shared = AdSDKManager()
     

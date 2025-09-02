@@ -21,7 +21,6 @@ struct SplashView: View {
     @EnvironmentObject private var adSDKManager: AdSDKManager
     @State private var splashData: SplashData
     @State private var remainingTime: TimeInterval = 0
-    @State private var showWebView = false
     @State private var isLoading = true
     @State private var timer: Timer?
     @State private var currentState: SplashState = .loading
@@ -49,12 +48,7 @@ struct SplashView: View {
     
     var body: some View {
         ZStack {
-            if showWebView {
-                ContentView()
-                    .transition(.opacity.animation(.easeInOut(duration: 0.6)))
-            } else {
-                splashContainer
-            }
+            splashContainer
         }
         .onAppear {
             setupSplashAdManager()
@@ -310,11 +304,6 @@ struct SplashView: View {
     
     // 广告事件处理
     private func handleAdDidLoad() {
-        // 检查是否还在启动页状态
-        guard !showWebView else {
-            print("已进入主页面，忽略广告加载完成事件")
-            return
-        }
         
         isAdLoaded = true
         
@@ -331,11 +320,6 @@ struct SplashView: View {
     }
     
     private func handleAdLoadFailed() {
-        // 检查是否还在启动页状态
-        guard !showWebView else {
-            print("已进入主页面，忽略广告加载失败事件")
-            return
-        }
         
         isAdLoaded = false
         
@@ -352,7 +336,7 @@ struct SplashView: View {
     }
     
     private func handleAdDidShow() {
-        guard currentState == .showingAd && !showWebView else {
+        guard currentState == .showingAd else {
             print("广告显示时状态不匹配或已进入主页面")
             return
         }
@@ -361,7 +345,7 @@ struct SplashView: View {
     }
     
     private func handleAdDidClose() {
-        guard currentState == .showingAd && !showWebView else {
+        guard currentState == .showingAd else {
             print("广告关闭时状态不匹配或已进入主页面")
             return
         }
@@ -372,10 +356,6 @@ struct SplashView: View {
     }
     
     private func handleAdShowFailed() {
-        guard !showWebView else {
-            print("已进入主页面，忽略广告展示失败事件")
-            return
-        }
         
         if currentState == .showingAd {
             print("预加载广告显示失败，直接进入主页面")
@@ -391,10 +371,9 @@ struct SplashView: View {
         // 立即标记已离开启动页并清理资源
         cleanupSplashView()
         
-        // 执行页面切换动画
-        withAnimation(.easeInOut(duration: 0.3)) {
-            showWebView = true
-        }
+        let rootUrl = NetworkAPI.baseWebURL
+        
+        Router.pushReplace(.webView(url: URL(string: rootUrl)!, title: "首页", showBackButton: true))
     }
     
     // 背景图片视图

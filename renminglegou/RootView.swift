@@ -5,23 +5,35 @@
 //  Created by abc on 2025/8/11.
 //
 
+//
+//  RootView.swift
+//  renminglegou
+//
+
 import SwiftUI
 
-struct ContentView: View {
-    @StateObject private var authState = AuthenticationState.shared
-    @StateObject private var userModel = UserModel.shared
+@available(iOS 16.0, *)
+struct RootView: View {
+    @EnvironmentObject private var router: Router
+    @EnvironmentObject private var adSDKManager: AdSDKManager
     
     var body: some View {
         ZStack {
-            let rootUrl = authState.isAuthenticated ? NetworkAPI.baseWebURL :NetworkAPI.baseWebURL+NetworkAPI.loginWebURL
-            WebViewPage(
-                url: URL(string: rootUrl)!,
-                defaultTitle: ""
-            )
-//            debugView
+            // 1️⃣ SDK 初始化未完成，显示白屏
+            if !adSDKManager.isInitialized {
+                Color.white
+                    .ignoresSafeArea()
+            }
+            
+            // 2️⃣ SDK 初始化完成，显示启动页或其他逻辑
+            else {
+                SplashView()
+            }
+            
+            // 3️⃣ 全局 Loading
+            PureSwiftUILoadingView()
         }
     }
-    
     
     var debugView: some View {
         
@@ -32,13 +44,13 @@ struct ContentView: View {
                 
                 WebViewPage(
                     url: localURL,
-                    defaultTitle: "任务中心测试"
+                    title: "任务中心测试"
                 )
             } else {
                 // 备用：使用原来的网络 URL
                 WebViewPage(
                     url: URL(string: NetworkAPI.baseWebURL)!,
-                    defaultTitle: ""
+                    title: ""
                 )
             }
             

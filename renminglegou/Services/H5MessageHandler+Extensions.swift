@@ -72,7 +72,7 @@ extension H5MessageHandler {
         let url = DataUtil.stringOf(dict["url"], defaultValue: "")
         
         if let webURL = URL(string: url) {
-            let webView = WebViewPage(url: webURL, defaultTitle: title)
+            let webView = WebViewPage(url: webURL, title: title)
             let hostingController = UIHostingController(rootView: webView)
             selfVC?.navigationController?.pushViewController(hostingController, animated: true)
         }

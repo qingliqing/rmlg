@@ -10,7 +10,7 @@ import UIKit
 
 class H5MessageHandler: NSObject {
     
-    static func receiveScriptMessage(_ message: WKScriptMessage, selfVC: UIViewController?, webView: WKWebView?, navigationManager: NavigationManager? = nil) {
+    static func receiveScriptMessage(_ message: WKScriptMessage, selfVC: UIViewController?, webView: WKWebView?) {
         
         switch message.name {
         case "onLoginEvent":
@@ -24,7 +24,7 @@ class H5MessageHandler: NSObject {
         case "openVidel":
             handleOpenVideo(selfVC: selfVC)
         case "openTaskCenter":
-            handleOpenTaskCenter(message.body, navigationManager: navigationManager)
+            handleOpenTaskCenter(message.body)
         case "onCertificationSuccess":
             handleCertificationSuccess(selfVC: selfVC)
         case "onFinishPage":
@@ -41,11 +41,7 @@ class H5MessageHandler: NSObject {
     }
     
     // 修改任务中心处理方法
-    private static func handleOpenTaskCenter(_ body: Any, navigationManager: NavigationManager?) {
-        guard let navigationManager = navigationManager else {
-            print("NavigationManager 不可用")
-            return
-        }
+    private static func handleOpenTaskCenter(_ body: Any) {
         
         // 解析参数
         var params: [String: AnyHashable]? = nil
@@ -61,7 +57,7 @@ class H5MessageHandler: NSObject {
         
         // 使用 SwiftUI 导航
         DispatchQueue.main.async {
-            navigationManager.navigateTo(.taskCenter(params: params))
+            Router.push(.taskCenter(params: params))
         }
     }
     
