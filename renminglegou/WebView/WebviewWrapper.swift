@@ -15,6 +15,9 @@ struct WebViewWrapper: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let userContentController = WKUserContentController()
         
+        // 注入 Cookie（在注册消息处理器之前）
+        injectCookies(to: userContentController, for: url.absoluteString)
+        
         let messageHandlers = [
             "onLoginEvent", "onLogoutEvent", "shareAiVideo", "openSkit",
             "openVidel", "openTaskCenter", "openAiSports", "openChatPage",
@@ -43,5 +46,32 @@ struct WebViewWrapper: UIViewRepresentable {
     
     func makeCoordinator() -> WebViewCoordinator {
         WebViewCoordinator(self)
+    }
+    
+    // MARK: - Cookie 注入
+    private func injectCookies(to userContentController: WKUserContentController, for urlString: String) {
+        // 检查是否需要注入 Cookie（替换为你的实际域名判断逻辑）
+        guard urlString.contains("your_base_web_url") else { // 替换为你的 kBase_web_url
+            return
+        }
+        
+        // 获取应用版本
+        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        
+        // 创建 Cookie 注入脚本 - 只注入平台和版本信息
+        let cookieScript = """
+        document.cookie = 'platform=ios';
+        document.cookie = 'versions=\(appVersion)';
+        """
+        
+        let script = WKUserScript(
+            source: cookieScript,
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: false
+        )
+        
+        userContentController.addUserScript(script)
+        
+        print("Cookie 注入完成: platform=ios, versions=\(appVersion)")
     }
 }
