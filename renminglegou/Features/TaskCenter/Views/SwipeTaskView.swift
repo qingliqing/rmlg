@@ -30,31 +30,18 @@ struct SwipeTaskView: View {
                         handleSwipeAction()
                     }) {
                         ZStack {
-                            // 背景图片
-                            if let _ = UIImage(named: "swipe_start_btn") {
-                                Image("swipe_start_btn")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 250, height: 60)
-                            } else {
-                                // 备用按钮样式
-                                RoundedRectangle(cornerRadius: 30)
-                                    .fill(
-                                        LinearGradient(
-                                            gradient: Gradient(colors: [Color.blue, Color.purple]),
-                                            startPoint: .leading,
-                                            endPoint: .trailing
-                                        )
-                                    )
-                                    .frame(width: 250, height: 60)
-                            }
-                            
-                            // 按钮文字 - 根据状态显示不同内容
+                            // 按钮状态
                             Group {
                                 if !canStartSwipe {
-                                    Text(isSwipeTaskCompleted ? "已完成" : "暂不可用")
-                                        .font(.system(size: 24, weight: .medium))
-                                        .foregroundStyle(.white.opacity(0.7))
+                                    Image("swipe_finish_btn")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 250, height: 60)
+                                }else {
+                                    Image("swipe_start_btn")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 250, height: 60)
                                 }
                             }
                         }
