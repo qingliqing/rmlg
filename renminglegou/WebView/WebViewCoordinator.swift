@@ -22,7 +22,7 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
         H5MessageHandler.receiveScriptMessage(
             message,
             selfVC: topViewController,
-            webView: currentWebView,
+            webView: currentWebView
         )
     }
     

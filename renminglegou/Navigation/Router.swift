@@ -20,8 +20,8 @@ class Router: ObservableObject {
     // MARK: - 基础跳转
     
     func push(_ route: AppRoute) {
+        path.append(route)
         routes.append(route)
-        rebuildPath()
     }
     
     func pushReplace(_ route: AppRoute) {
@@ -39,9 +39,9 @@ class Router: ObservableObject {
     }
     
     func pop() {
-        if !routes.isEmpty {
+        if !path.isEmpty {
+            path.removeLast()
             routes.removeLast()
-            rebuildPath()
         }
     }
     

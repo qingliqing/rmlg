@@ -84,12 +84,15 @@ final class SwipeTaskViewModel: ObservableObject {
         if rewardAdManager.isAdReady(for: defaultSlotID) {
             // 广告已准备就绪，直接展示
             showRewardAdDirectly()
+            print("刷刷赚广告已经准备就绪，直接播放")
         } else if rewardAdManager.isAdLoading(for: defaultSlotID) {
             // 广告正在加载，显示loading等待
             showLoadingAndWaitForAd()
+            print("刷刷赚广告正在加载，loading")
         } else {
             // 广告未加载，开始加载流程
             startAdLoadingProcess()
+            print("刷刷赚广告未加载，开始加载...")
         }
     }
     

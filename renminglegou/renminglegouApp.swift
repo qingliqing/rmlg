@@ -10,7 +10,7 @@ import BUAdSDK
 
 @main
 struct renminglegouApp: App {
-    @StateObject private var adSDKManager = AdSDKManager.shared
+    @ObservedObject private var adSDKManager = AdSDKManager.shared
     @StateObject private var router = Router.shared
 
     init() {
@@ -32,6 +32,13 @@ struct renminglegouApp: App {
                     }
                 }
             }
+            .overlay(content: {
+                // 3️⃣ 全局 Loading
+                PureSwiftUILoadingView()
+                    .onReceive(PureLoadingManager.shared.$isShowingLoading) { isShowing in
+                        print("🌍 RootView收到Loading状态变化: \(isShowing)")
+                    }
+            })
             .environmentObject(router)
             .environmentObject(adSDKManager)
         }

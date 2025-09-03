@@ -29,9 +29,6 @@ struct RootView: View {
             else {
                 SplashView()
             }
-            
-            // 3️⃣ 全局 Loading
-            PureSwiftUILoadingView()
         }
     }
     

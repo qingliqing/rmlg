@@ -186,6 +186,7 @@ class SingleRewardAdManager: NSObject {
         
         let rewardedVideoAd = BUNativeExpressRewardedVideoAd(slot: slot, rewardedVideoModel: rewardedVideoModel)
         rewardedVideoAd.delegate = self
+        rewardedVideoAd.rewardPlayAgainInteractionDelegate = self
         rewardedVideoAd.mediation?.addParam(NSNumber(value: 0), withKey: "show_direction")
         
         self.rewardedVideoAd = rewardedVideoAd

@@ -221,7 +221,7 @@ struct CircleLoadingView: View {
 
 // MARK: - 纯SwiftUI Loading视图
 struct PureSwiftUILoadingView: View {
-    @StateObject private var loadingManager = PureLoadingManager.shared
+    @ObservedObject private var loadingManager = PureLoadingManager.shared
     
     var body: some View {
         ZStack {

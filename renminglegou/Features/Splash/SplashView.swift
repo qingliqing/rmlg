@@ -26,6 +26,7 @@ struct SplashView: View {
     @State private var currentState: SplashState = .loading
     @State private var isAdLoaded = false  // 跟踪广告加载状态
     @State private var adLoadStartTime: Date?  // 记录广告加载开始时间
+    @State private var isInSplashView: Bool = true  // 是否在当前页面
     
     @StateObject private var networkMonitor = NetworkMonitor()
     @StateObject private var splashCache = SplashCache.shared
@@ -373,7 +374,9 @@ struct SplashView: View {
         
         let rootUrl = NetworkAPI.baseWebURL
         
-        Router.pushReplace(.webView(url: URL(string: rootUrl)!, title: "首页", showBackButton: true))
+        splashAdManager.setInSplashView(isInSplashView)
+        
+        Router.pushReplace(.webView(url: URL(string: rootUrl)!, title: "首页", showBackButton: false))
     }
     
     // 背景图片视图
