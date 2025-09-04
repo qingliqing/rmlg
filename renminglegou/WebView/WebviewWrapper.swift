@@ -51,7 +51,7 @@ struct WebViewWrapper: UIViewRepresentable {
     // MARK: - Cookie 注入
     private func injectCookies(to userContentController: WKUserContentController, for urlString: String) {
         // 检查是否需要注入 Cookie（替换为你的实际域名判断逻辑）
-        guard urlString.contains("your_base_web_url") else { // 替换为你的 kBase_web_url
+        guard urlString.contains(NetworkAPI.baseWebURL) else { // 替换为你的 kBase_web_url
             return
         }
         

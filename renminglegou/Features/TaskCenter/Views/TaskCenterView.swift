@@ -85,10 +85,10 @@ struct TaskCenterView: View {
                     .closeOnTapOutside(true)
                     .allowTapThroughBG(false)
                     .dismissCallback { dismissSource in
-                        DispatchQueue.main.async {
-                            if shouldShowAdAfterDismiss == true {
-                                // 用户点击了展示广告按钮后隐藏的
-                                shouldShowAdAfterDismiss = false
+                        if shouldShowAdAfterDismiss == true {
+                            // 用户点击了展示广告按钮后隐藏的
+                            shouldShowAdAfterDismiss = false
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                                 viewModel.swipeVM.watchRewardAd()
                             }
                         }
