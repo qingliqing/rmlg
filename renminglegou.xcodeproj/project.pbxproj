@@ -60,11 +60,15 @@
 		};
 		284375112E4A150200A1CCCD /* renminglegouTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = renminglegouTests;
 			sourceTree = "<group>";
 		};
 		2843751B2E4A150200A1CCCD /* renminglegouUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = renminglegouUITests;
 			sourceTree = "<group>";
 		};
@@ -286,13 +290,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-renminglegou/Pods-renminglegou-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-renminglegou/Pods-renminglegou-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -307,13 +307,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-renminglegou/Pods-renminglegou-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-renminglegou/Pods-renminglegou-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
