@@ -41,54 +41,12 @@ struct DailyTaskView: View {
                                 let currentCount = viewModel.dailyViewCount
                                 
                                 if index < currentCount {
-                                    // 已完成状态
-                                    if let _ = UIImage(named: "task_coin_completed") {
-                                        Image("task_coin_completed")
-                                            .resizable()
-                                            .scaledToFit()
-                                            .frame(width: 60, height: 80)
-                                    } else {
-                                        // 备用UI - 已完成
-                                        ZStack {
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .fill(Color.green.opacity(0.8))
-                                                .frame(width: 60, height: 80)
-                                            
-                                            VStack(spacing: 4) {
-                                                Image(systemName: "checkmark.circle.fill")
-                                                    .foregroundColor(.white)
-                                                    .font(.title2)
-                                                
-                                                Text("已完成")
-                                                    .font(.system(size: 10, weight: .medium))
-                                                    .foregroundColor(.white)
-                                            }
-                                        }
-                                    }
-                                } else if index == currentCount && viewModel.canWatchDailyAd {
                                     // 可观看状态
                                     if let _ = UIImage(named: "task_coin_available") {
                                         Image("task_coin_available")
                                             .resizable()
                                             .scaledToFit()
                                             .frame(width: 60, height: 80)
-                                    } else {
-                                        // 备用UI - 可观看
-                                        ZStack {
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .fill(Color.yellow.opacity(0.8))
-                                                .frame(width: 60, height: 80)
-                                            
-                                            VStack(spacing: 4) {
-                                                Image(systemName: "play.circle.fill")
-                                                    .foregroundColor(.white)
-                                                    .font(.title2)
-                                                
-                                                Text("可观看")
-                                                    .font(.system(size: 10, weight: .medium))
-                                                    .foregroundColor(.white)
-                                            }
-                                        }
                                     }
                                 } else {
                                     // 锁定状态
@@ -97,23 +55,6 @@ struct DailyTaskView: View {
                                             .resizable()
                                             .scaledToFit()
                                             .frame(width: 60, height: 80)
-                                    } else {
-                                        // 备用UI - 锁定
-                                        ZStack {
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .fill(Color.gray.opacity(0.6))
-                                                .frame(width: 60, height: 80)
-                                            
-                                            VStack(spacing: 4) {
-                                                Image(systemName: "lock.fill")
-                                                    .foregroundColor(.white)
-                                                    .font(.title2)
-                                                
-                                                Text("锁定")
-                                                    .font(.system(size: 10, weight: .medium))
-                                                    .foregroundColor(.white)
-                                            }
-                                        }
                                     }
                                 }
                             }
