@@ -1,0 +1,73 @@
+{
+	"init": {
+		"site_id": "5706508",
+		"app_id": "787239",
+		"partner": "pangle_787239",
+		"secure_key": "3f62eec9e2c7382311ba72f63508844d",
+		"secure_key_d": "762ab0fc85e652786254e3ae636d7416"
+	},
+	"feed": {
+		"news_list_ad_code_id": "",
+		"news_first_ad_code_id": "",
+		"news_second_ad_code_id": "",
+		"video_first_ad_code_id": "",
+		"video_second_ad_code_id": "",
+		"related_ad_code_id": "",
+		"news_draw_ad_code_id": "967899707",
+		"news_draw_native_ad_code_id": "967899711",
+		"news_outer_list_ad_code_id": "",
+		"news_outer_first_ad_code_id": "",
+		"news_outer_second_ad_code_id": "",
+		"outer_video_second_ad_code_id": "",
+		"outer_related_ad_code_id": "",
+		"news_outer_draw_ad_code_id": "967899708",
+		"news_outer_draw_native_ad_code_id": "967899719",
+		"news_interstitial_code_id": ""
+	},
+	"small_video": {
+		"draw_ad_code_id": "967899704",
+		"draw_native_ad_code_id": "967899709",
+		"grid_ad_code_id": "967899720",
+		"grid_draw_ad_code_id": "967899718",
+		"grid_draw_native_ad_code_id": "967899721",
+		"video_card_ad_code_id": "967899705",
+		"video_card_draw_ad_code_id": "967899714",
+		"video_card_draw_native_ad_code_id": "967899713",
+		"interstitial_ad_code_id": "",
+		"interstitial_note_ad_code_id": "967899717",
+		"staggered_grid_ad_code_id": "967899715",
+		"staggered_grid_draw_ad_code_id": "967899704",
+		"staggered_grid_draw_native_ad_code_id": "967899709",
+		"draw_interstitial_ad_code_id": "967899706",
+		"draw_fullscreen_interstitial_ad_code_id": "967899722",
+		"draw_banner_code_id": "967899710",
+		"drama_rewarded_ad_code_id": "967899703",
+		"drama_rewarded_ad_code_id_02": "967899716",
+		"drama_draw_ad_code_id": "967899712",
+		"staggered_grid_ad_code_id_02": "967899702"
+	},
+	"novel": {
+		"status": 0,
+		"pre_ad_code_id": "",
+		"mid_ad_code_id": "",
+		"exciting_ad_code_id": "",
+		"interstitial_code_id": "",
+		"banner_ad_code_id": "",
+		"end_ad_code_id": ""
+	},
+	"live": null,
+	"license_config": [
+		{
+			"PackageName": "com.sxw.renminglegou",
+			"BundleId": "com.sxw.renminglegou",
+			"StartTime": "20250627T041408Z",
+			"ExpireTime": "20270627T041408Z",
+			"CreatedTime": "20250627T041407Z",
+			"Signature": "NrRufWg3DF/SQffFx3RTaXRaogT4okpe3FoXGtlKWHu4/9Jnc+fR6iTvqEAPWNNDb7jFTcGatri+QXpg7J1tWHF3bka/bqL2cu29ZhEEEbvRTyA3XNbPCwMBk6clrT8S81GAgv1xFARSG+gbUwd8Ibzy1bD1gMbenjGgTwF8k1PpllBYvtJMYsLkZYHyNHddxBbllpfd58IGBzwQkM2Icb688Q1iNA0npDDECqj2XdRxUxR0wOnCSTHs4/nRHBbv/7liWlGEbEfcz/aguBn1l0xBPkEjZz+fpV6DouZhqxd5bn6VBj8FJXX4kqsME0nsPdbSNNXtPqP1o2oDEen2wA==",
+			"Content": "eyJJZCI6IjIxMzc0MDkyODIiLCAiVmVyc2lvbiI6MiwgIkNoYW5uZWwiOiJhZF9jc2oiLCAiVHlwZSI6MiwgIlBhY2thZ2VOYW1lIjoiY29tLnN4dy5yZW5taW5nbGVnb3UiLCAiQnVuZGxlSWQiOiJjb20uc3h3LnJlbm1pbmdsZWdvdSIsICJNb2R1bGVzIjpbeyJOYW1lIjoidm9kX3BsYXkiLCAiRWRpdGlvbiI6InByZW1pdW1fZWRpdGlvbiIsICJTdGFydFRpbWUiOjE3NTA5OTc2NDc5MTYsICJFeHBpcmVUaW1lIjoxODE0MDY5NjQ3OTE2LCAiRXhwaXJlQnVmZmVyIjoxNTU1MjAwMDAwMH1dLCAiRmlsZVZlcnNpb24iOiIxNzUwOTk3NjQ3OTI2Nzg5MTE0In0=",
+			"MainURL": "https://vod-license-m.volccdn.com/vod-license/l-2137409282-ch-ad_csj-a-787239.lic?lk3s=0d9f7a7d\u0026x-expires=4904597647\u0026x-signature=tIJkPP7rezPBxrHkH%2FM%2BdLNWof4%3D",
+			"BackupURL": "https://vod-license-b.volccdn.com/vod-license/l-2137409282-ch-ad_csj-a-787239.lic?lk3s=0d9f7a7d\u0026x-expires=4904597647\u0026x-signature=wQ1sz6jPvtCxEqILk3XrE%2BRImZ4%3D",
+			"Id": "2137409282"
+		}
+	]
+}

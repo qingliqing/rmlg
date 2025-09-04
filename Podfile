@@ -20,6 +20,8 @@ target 'renminglegou' do
   pod 'TTSDKFramework', '1.42.3.4-premium', :subspecs => [ 'Player-SR' ]
   pod 'PangrowthX', '2.8.0.0', :subspecs => [ 'shortplay-beta' ]
   
+  pod 'GMKsAdapter-Beta', '4.6.30.1.0'
+  
   # 设置线上打包tag,该tag不再执行adapter自动更新，此时以adapter自动更新的最后一次结果去加载各adapter的版本
 #  gm_release_target!
   

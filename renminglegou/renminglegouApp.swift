@@ -7,6 +7,7 @@
 
 import SwiftUI
 import BUAdSDK
+import PangrowthDJX
 
 @main
 struct renminglegouApp: App {
