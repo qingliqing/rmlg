@@ -48,6 +48,8 @@ struct AdTask: Codable {
     let sortOrder: Int?
     let adTotalCount: String?
     let jumpLink: String?
+    let status: Int?              // 状态码
+    let statusMsg: String?        // 状态消息
 }
 
 /// 广告任务进度
@@ -95,6 +97,21 @@ extension AdTask {
     /// 是否有跳转链接
     var hasJumpLink: Bool {
         return !(jumpLink?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+    }
+    
+    /// 获取状态码
+    var taskStatus: Int {
+        return status ?? 0
+    }
+    
+    /// 获取状态消息
+    var statusMessage: String {
+        return statusMsg?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+    
+    /// 是否有状态消息需要显示
+    var hasStatusMessage: Bool {
+        return !statusMessage.isEmpty
     }
 }
 

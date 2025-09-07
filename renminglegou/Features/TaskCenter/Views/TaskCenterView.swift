@@ -248,6 +248,11 @@ struct TaskCenterView: View {
                     let userToken = UserModel.shared.token
                     let encodedToken = userToken.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? userToken
                     
+                    guard viewModel.brandTask?.status == 1 else {
+                        PureLoadingManager.shared.showAlert(message: viewModel.brandTask?.statusMessage ?? "")
+                        return
+                    }
+                    
                     // 替换占位符
                     let finalURLString = urlString.replacingOccurrences(of: "{1}", with: encodedToken)
                     
