@@ -136,7 +136,7 @@ extension H5MessageHandler {
     
     private static func openPlayletPage(from viewController: UIViewController?) {
         print("打开短剧页面")
-        // 实现短剧页面打开逻辑
+        Router.shared.push(.djxPlaylet())
     }
     
     private static func openShortVideoPage(from viewController: UIViewController?) {

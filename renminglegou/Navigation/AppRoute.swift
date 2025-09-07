@@ -10,6 +10,7 @@ enum AppRoute: Hashable {
     case splash
     case webView(url: URL, title: String = "", showBackButton: Bool = true)
     case taskCenter(params: [String: AnyHashable]? = nil)
+    case djxPlaylet(config: DJXPlayletPageConfig = DJXPlayletPageConfig())
     
     // 保留原来的标识（方便调试/打印/日志）
     var rawValue: String {
@@ -17,6 +18,7 @@ enum AppRoute: Hashable {
         case .splash: return "splash"
         case .webView: return "webView"
         case .taskCenter: return "taskCenter"
+        case .djxPlaylet: return "djxPlaylet"
         }
     }
     
@@ -26,6 +28,7 @@ enum AppRoute: Hashable {
         case .splash: return "启动页"
         case .webView(_, let title, _): return title
         case .taskCenter: return "任务中心"
+        case .djxPlaylet: return "短剧"
         }
     }
     

@@ -37,7 +37,13 @@ struct WebViewWrapper: UIViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
-        webView.load(URLRequest(url: url))
+        
+        // 创建带请求头的请求（添加token）
+        var request = URLRequest(url: url)
+        
+        request.setValue(UserModel.shared.token, forHTTPHeaderField: "Authorization")
+        
+        webView.load(request)
         
         return webView
     }
