@@ -8,6 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		1D2819012E62055500A43E49 /* PopupView in Frameworks */ = {isa = PBXBuildFile; productRef = 1D2819002E62055500A43E49 /* PopupView */; };
+		1D281B422E6D634B00A43E49 /* UPPaymentControlMini.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1D281B412E6D634B00A43E49 /* UPPaymentControlMini.xcframework */; };
+		1D281B442E6D64AC00A43E49 /* CFNetwork.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1D281B432E6D64AC00A43E49 /* CFNetwork.framework */; };
+		1D281B462E6D64B300A43E49 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1D281B452E6D64B300A43E49 /* SystemConfiguration.framework */; };
+		1D281B482E6D64C100A43E49 /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 1D281B472E6D64C100A43E49 /* libz.tbd */; };
 		285DD3872E4DC36D007A8C29 /* Alamofire.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 285DD3862E4DC36D007A8C29 /* Alamofire.framework */; };
 		36FD593CD38CD12C5217248E /* Pods_renminglegou.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3D8EC9276D64B64D7E96D0D7 /* Pods_renminglegou.framework */; };
 /* End PBXBuildFile section */
@@ -30,6 +34,11 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		1D281B412E6D634B00A43E49 /* UPPaymentControlMini.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = UPPaymentControlMini.xcframework; sourceTree = "<group>"; };
+		1D281B432E6D64AC00A43E49 /* CFNetwork.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CFNetwork.framework; path = System/Library/Frameworks/CFNetwork.framework; sourceTree = SDKROOT; };
+		1D281B452E6D64B300A43E49 /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
+		1D281B472E6D64C100A43E49 /* libz.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
+		1D281B492E6D698700A43E49 /* renminglegou-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "renminglegou-Bridging-Header.h"; sourceTree = "<group>"; };
 		284374FE2E4A150000A1CCCD /* renminglegou.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = renminglegou.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2843750E2E4A150200A1CCCD /* renminglegouTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = renminglegouTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		284375182E4A150200A1CCCD /* renminglegouUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = renminglegouUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -75,6 +84,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1D281B482E6D64C100A43E49 /* libz.tbd in Frameworks */,
+				1D281B462E6D64B300A43E49 /* SystemConfiguration.framework in Frameworks */,
+				1D281B442E6D64AC00A43E49 /* CFNetwork.framework in Frameworks */,
+				1D281B422E6D634B00A43E49 /* UPPaymentControlMini.xcframework in Frameworks */,
 				1D2819012E62055500A43E49 /* PopupView in Frameworks */,
 				36FD593CD38CD12C5217248E /* Pods_renminglegou.framework in Frameworks */,
 				285DD3872E4DC36D007A8C29 /* Alamofire.framework in Frameworks */,
@@ -101,12 +114,14 @@
 		284374F52E4A14FF00A1CCCD = {
 			isa = PBXGroup;
 			children = (
+				1D281B412E6D634B00A43E49 /* UPPaymentControlMini.xcframework */,
 				284375002E4A150000A1CCCD /* renminglegou */,
 				284375112E4A150200A1CCCD /* renminglegouTests */,
 				2843751B2E4A150200A1CCCD /* renminglegouUITests */,
 				284374FF2E4A150000A1CCCD /* Products */,
 				3953089D4791C5AD5AFEBE05 /* Pods */,
 				4C71423C73CA43FC85DF8CB9 /* Frameworks */,
+				1D281B492E6D698700A43E49 /* renminglegou-Bridging-Header.h */,
 			);
 			sourceTree = "<group>";
 		};
@@ -132,6 +147,9 @@
 		4C71423C73CA43FC85DF8CB9 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				1D281B472E6D64C100A43E49 /* libz.tbd */,
+				1D281B452E6D64B300A43E49 /* SystemConfiguration.framework */,
+				1D281B432E6D64AC00A43E49 /* CFNetwork.framework */,
 				285DD3862E4DC36D007A8C29 /* Alamofire.framework */,
 				3D8EC9276D64B64D7E96D0D7 /* Pods_renminglegou.framework */,
 			);
@@ -213,11 +231,14 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
+				CLASSPREFIX = "";
 				LastSwiftUpdateCheck = 1620;
 				LastUpgradeCheck = 1620;
+				ORGANIZATIONNAME = "";
 				TargetAttributes = {
 					284374FD2E4A150000A1CCCD = {
 						CreatedOnToolsVersion = 16.2;
+						LastSwiftMigration = 1630;
 					};
 					2843750D2E4A150200A1CCCD = {
 						CreatedOnToolsVersion = 16.2;
@@ -507,6 +528,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"renminglegou/Preview Content\"";
@@ -516,6 +538,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = renminglegou/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "人民乐购";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSUserTrackingUsageDescription = "此权限用于显示个性化广告内容。我们仅使用设备的匿名标识符，不会收集或存储您的个人信息。您可以随时在\"设置-隐私与安全性-跟踪\"中更改此设置。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -536,6 +559,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.sxw.renminglegou;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "renminglegou-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -547,6 +572,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"renminglegou/Preview Content\"";
@@ -556,6 +582,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = renminglegou/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "人民乐购";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSUserTrackingUsageDescription = "此权限用于显示个性化广告内容。我们仅使用设备的匿名标识符，不会收集或存储您的个人信息。您可以随时在\"设置-隐私与安全性-跟踪\"中更改此设置。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -576,6 +603,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.sxw.renminglegou;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "renminglegou-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

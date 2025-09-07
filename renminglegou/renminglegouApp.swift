@@ -11,6 +11,7 @@ import PangrowthDJX
 
 @main
 struct renminglegouApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @ObservedObject private var adSDKManager = AdSDKManager.shared
     @ObservedObject private var djxSDKManager = DJXSDKManager.shared
     @StateObject private var router = Router.shared

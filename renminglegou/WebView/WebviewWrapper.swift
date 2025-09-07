@@ -19,7 +19,7 @@ struct WebViewWrapper: UIViewRepresentable {
         injectCookies(to: userContentController, for: url.absoluteString)
         
         let messageHandlers = [
-            "onLoginEvent", "onLogoutEvent", "shareAiVideo", "openSkit",
+            "onLoginEvent", "onLogoutEvent", "openUnionPay", "openSkit",
             "openVidel", "openTaskCenter", "openAiSports", "openChatPage",
             "openCustomerPage", "onCertificationSuccess", "onFinishPage",
             "jumpToAppStore", "getUserId", "shareWx", "openAiMatch"
@@ -37,6 +37,8 @@ struct WebViewWrapper: UIViewRepresentable {
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = true
+        
+        context.coordinator.currentWebView = webView
         
         // 创建带请求头的请求（添加token）
         var request = URLRequest(url: url)

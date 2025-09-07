@@ -23,8 +23,33 @@ extension H5MessageHandler {
     }
     
     static func handleOpenUnionPay(_ body: Any, selfVC: UIViewController?) {
-        let token = DataUtil.stringOf(body, defaultValue: "")
-        showShareView(token: token, title: "", description: "")
+        print("银联支付参数：\(body)")
+        guard let params = body as? [String: Any],
+              let tn = params["orderInfo"] as? String else {
+            print("银联支付参数错误")
+            return
+        }
+        
+        // 获取支付环境，默认测试环境
+        let mode = params["mode"] as? String ?? "01"
+        
+        guard let rootViewController = UIUtils.findViewController() else {
+            print("无法获取根视图控制器")
+            return
+        }
+        
+        DispatchQueue.main.async {
+            let success = UPPaymentControl.default().startPay(
+                tn,
+                fromScheme: "renminglegou",
+                mode: mode,
+                viewController: rootViewController
+            )
+            
+            if !success {
+                print("启动银联支付失败")
+            }
+        }
     }
     
     static func handleOpenSkit(selfVC: UIViewController?) {

@@ -2,8 +2,63 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>renminglegou</string>
+			</array>
+		</dict>
+	</array>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>uppaywallet</string>
+		<string>uppaysdk</string>
+		<string>uppayx1</string>
+		<string>uppayx2</string>
+		<string>uppayx3</string>
+		<string>spdbcccUnionPay</string>
+		<string>paesuperbank</string>
+		<string>ccbmbsylunionpay</string>
+		<string>citicbankpay</string>
+		<string>citicbankdkkj</string>
+		<string>com.cebbank.ebank</string>
+		<string>cmbc</string>
+		<string>spdbbank</string>
+		<string>bocom</string>
+		<string>bankabc</string>
+		<string>cmbmobilebank</string>
+		<string>cmblife</string>
+		<string>BankOfShangHai</string>
+		<string>boscgdlf</string>
+		<string>com.icbc.iphoneclient</string>
+		<string>credit</string>
+		<string>cibmb</string>
+		<string>bocmbankpsn</string>
+		<string>bankofbjpay</string>
+		<string>LZYHSJYHAUTHSSOAPP</string>
+		<string>hzbank</string>
+		<string>openguangyin</string>
+		<string>bcsyltysyt</string>
+		<string>zytuppay</string>
+		<string>cmpay</string>
+		<string>bnbpay</string>
+		<string>uppayzhonghangcredit</string>
+		<string>uppayguangdacredit</string>
+		<string>uppayguangfa</string>
+		<string>dlrcb</string>
+		<string>psbccashier</string>
+		<string>uppayhuaxiacredit</string>
+		<string>uppaybeijingcredit</string>
+		<string>bankofbjpay</string>
+		<string>com.cebbank.ebank</string>
+		<string>uppayjiaohangcredit</string>
+		<string>uppayxingyecredit</string>
+		<string>uppayhuaxia</string>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>

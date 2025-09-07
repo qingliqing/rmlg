@@ -8,14 +8,44 @@
 import WebKit
 import UIKit
 import SwiftUICore
+import Network
 
 class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
     var parent: WebViewWrapper
     weak var currentWebView: WKWebView?
+    private var monitor: NWPathMonitor?
+    private var queue = DispatchQueue(label: "NetworkMonitor")
     
     init(_ parent: WebViewWrapper) {
         self.parent = parent
+        super.init()
+        startNetworkMonitoring()
     }
+    
+    // MARK: - 网络监听
+    private func startNetworkMonitoring() {
+        monitor = NWPathMonitor()
+        monitor?.pathUpdateHandler = { [weak self] path in
+            DispatchQueue.main.async {
+                if path.status == .satisfied {
+                    self?.refreshWebViewIfNeeded()
+                }
+            }
+        }
+        monitor?.start(queue: queue)
+    }
+    
+    private func refreshWebViewIfNeeded() {
+        guard let webView = currentWebView else { return }
+        
+        // 只在页面加载失败或者没有内容时才刷新
+        if webView.url == nil || !webView.isLoading {
+            var request = URLRequest(url: parent.url)
+            request.setValue(UserModel.shared.token, forHTTPHeaderField: "Authorization")
+            webView.load(request)
+        }
+    }
+    
     
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         let topViewController = getTopViewController()
@@ -95,6 +125,8 @@ class WebViewCoordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler
     }
     
     deinit {
+        // 移除网络监听
+        monitor?.cancel()
         // 移除 KVO 监听
         currentWebView?.removeObserver(self, forKeyPath: "title")
     }
