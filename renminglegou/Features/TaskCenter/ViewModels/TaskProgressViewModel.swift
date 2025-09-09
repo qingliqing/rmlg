@@ -39,14 +39,6 @@ final class TaskProgressViewModel: ObservableObject {
         }
     }
     
-    /// 完成观看任务
-    func completeViewTask(taskType: Int, adFinishFlag: String) async throws {
-        isCompletingView = true
-        defer { isCompletingView = false }
-        
-        _ = try await taskService.completeView(taskType: taskType, adFinishFlag: adFinishFlag)
-    }
-    
     /// 刷新特定任务进度
     func refreshTaskProgress(taskType: Int) async throws {
         try await loadTaskProgress(taskType: taskType)

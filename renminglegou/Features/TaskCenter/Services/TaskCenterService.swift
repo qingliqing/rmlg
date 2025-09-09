@@ -16,17 +16,6 @@ class TaskCenterService {
     
     // MARK: - 刷刷赚相关接口
     
-    /// 发放积分
-    func grantPoints() async throws -> Empty {
-        let api = AdTaskAPI.grantPoints
-        return try await networkManager.request(
-            path: api.path,
-            method: api.method,
-            parameters: api.parameters,
-            responseType: Empty.self
-        )
-    }
-    
     /// 获取广告奖励配置列表
     func getRewardConfigs() async throws -> [AdRewardConfig] {
         let api = AdTaskAPI.getRewardConfigs
@@ -35,39 +24,6 @@ class TaskCenterService {
             method: api.method,
             parameters: api.parameters,
             responseType: [AdRewardConfig].self
-        )
-    }
-    
-    /// 获取用户广告记录数量
-    func getAdRecords() async throws -> Int {
-        let api = AdTaskAPI.getAdRecords
-        return try await networkManager.request(
-            path: api.path,
-            method: api.method,
-            parameters: api.parameters,
-            responseType: Int.self
-        )
-    }
-    
-    /// 获取用户看广告获取最大的积分
-    func getMaxPoints() async throws -> AdPoints {
-        let api = AdTaskAPI.getMaxPoints
-        return try await networkManager.request(
-            path: api.path,
-            method: api.method,
-            parameters: api.parameters,
-            responseType: AdPoints.self
-        )
-    }
-    
-    /// 获取用户看当前广告获取的积分
-    func getCurrentPoints() async throws -> AdPoints {
-        let api = AdTaskAPI.getCurrentPoints
-        return try await networkManager.request(
-            path: api.path,
-            method: api.method,
-            parameters: api.parameters,
-            responseType: AdPoints.self
         )
     }
     
@@ -82,6 +38,19 @@ class TaskCenterService {
         )
     }
     
+    // MARK: - 广告平台配置相关接口
+    
+    /// 获取所有广告位列表
+    func getAdCodeList() async throws -> AdCodeConfig {
+        let api = AdTaskAPI.getAdCodeList
+        return try await networkManager.request(
+            path: api.path,
+            method: api.method,
+            parameters: api.parameters,
+            responseType: AdCodeConfig.self
+        )
+    }
+    
     // MARK: - 每日广告任务相关接口
     
     /// 用户领取广告任务
@@ -93,20 +62,6 @@ class TaskCenterService {
             method: api.method,
             parameters: api.parameters,
             responseType: AdTaskProgress.self
-        )
-    }
-    
-    /// 用户完成一次广告观看
-    /// - Parameters:
-    ///   - taskType: 任务类型
-    ///   - adFinishFlag: 广告完成标识（可选）
-    func completeView(taskType: Int, adFinishFlag: String? = nil) async throws -> Empty {
-        let api = AdTaskAPI.completeView(taskType: taskType, adFinishFlag: adFinishFlag)
-        return try await networkManager.request(
-            path: api.path,
-            method: api.method,
-            parameters: api.parameters,
-            responseType: Empty.self
         )
     }
     
@@ -131,14 +86,8 @@ class TaskCenterService {
     /// - Returns: 是否成功完成流程
     func completeAdWatchFlow(taskType: Int, adFinishFlag: String? = nil) async throws -> Bool {
         do {
-            // 1. 先领取任务
+            // 先领取新任务
             _ = try await receiveTask(taskType: taskType)
-            
-            // 2. 完成观看
-            _ = try await completeView(taskType: taskType, adFinishFlag: adFinishFlag)
-            
-            // 3. 发放积分
-            _ = try await grantPoints()
             
             return true
         } catch {
@@ -146,59 +95,16 @@ class TaskCenterService {
             throw error
         }
     }
-    
-    /// 获取完整的广告状态信息
-    /// - Parameter taskType: 任务类型
-    /// - Returns: 广告状态信息元组
-    func getAdStatusInfo(taskType: Int) async throws -> (todayCount: Int, currentPoints: AdPoints, maxPoints: AdPoints) {
-        async let todayCount = getTodayCount(taskType: taskType)
-        async let currentPoints = getCurrentPoints()
-        async let maxPoints = getMaxPoints()
-        
-        return try await (todayCount, currentPoints, maxPoints)
-    }
 }
 
 // MARK: - 便捷扩展（向后兼容的回调版本）
 extension TaskCenterService {
-    
-    /// 发放积分（回调版本）
-    func grantPoints(completion: @escaping (Result<Empty, NetworkError>) -> Void) {
-        Task {
-            do {
-                let result = try await grantPoints()
-                await MainActor.run {
-                    completion(.success(result))
-                }
-            } catch {
-                await MainActor.run {
-                    completion(.failure(error as? NetworkError ?? .networkError(error)))
-                }
-            }
-        }
-    }
     
     /// 获取广告奖励配置列表（回调版本）
     func getRewardConfigs(completion: @escaping (Result<[AdRewardConfig], NetworkError>) -> Void) {
         Task {
             do {
                 let result = try await getRewardConfigs()
-                await MainActor.run {
-                    completion(.success(result))
-                }
-            } catch {
-                await MainActor.run {
-                    completion(.failure(error as? NetworkError ?? .networkError(error)))
-                }
-            }
-        }
-    }
-    
-    /// 用户完成一次广告观看（回调版本）
-    func completeView(taskType: Int, adFinishFlag: String? = nil, completion: @escaping (Result<Empty, NetworkError>) -> Void) {
-        Task {
-            do {
-                let result = try await completeView(taskType: taskType, adFinishFlag: adFinishFlag)
                 await MainActor.run {
                     completion(.success(result))
                 }
