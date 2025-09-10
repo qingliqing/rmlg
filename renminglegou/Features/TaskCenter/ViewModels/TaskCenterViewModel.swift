@@ -9,6 +9,22 @@ import Foundation
 import Combine
 import UIKit
 
+/// 广告位任务类型枚举
+enum AdTaskType: Int, CaseIterable {
+    case dailyTask = 1      // 每日任务
+    case swipeTask = 2      // 刷刷赚
+    case brandTask = 3      // 品牌任务
+    
+    
+    var displayName: String {
+        switch self {
+        case .dailyTask: return "每日任务"
+        case .swipeTask: return "刷刷赚"
+        case .brandTask: return "品牌任务"
+        }
+    }
+}
+
 @MainActor
 class TaskCenterViewModel: ObservableObject {
     
@@ -41,9 +57,9 @@ class TaskCenterViewModel: ObservableObject {
     private let adSlotManager = AdSlotManager.shared
     
     // 使用枚举替代硬编码常量
-    private let dailyTaskType = AdSlotTaskType.dailyTask
-    private let swipeTaskType = AdSlotTaskType.browsing
-    private let brandTaskType = AdSlotTaskType.splash
+    private let dailyTaskType = AdTaskType.dailyTask
+    private let swipeTaskType = AdTaskType.swipeTask
+    private let brandTaskType = AdTaskType.brandTask
     
     // MARK: - Computed Properties
     
@@ -82,6 +98,12 @@ class TaskCenterViewModel: ObservableObject {
         dailyVM.onAdWatchCompleted = { [weak self] in
             await self?.handleDailyAdWatchCompleted()
         }
+        
+        swipeVM.setDependencies(
+            adSlotManager: adSlotManager,
+            taskProgressViewModel: taskProgressViewModel,
+            swipeTask: swipeTask
+        )
         
         swipeVM.onAdWatchCompleted = { [weak self] in
             await self?.handleSwipeAdWatchCompleted()

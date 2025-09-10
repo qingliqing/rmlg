@@ -12,8 +12,6 @@ struct TaskCenterView: View {
     @StateObject private var viewModel = TaskCenterViewModel()
     @State private var selectedTab: TaskTab = .daily
     @Environment(\.presentationMode) var presentationMode
-    @State private var showRewardPopup = false
-    @State private var shouldShowAdAfterDismiss = false
     
     // 添加广告高度状态变量
     @State private var nativeAdHeight: CGFloat = 160 // 初始预估高度
@@ -63,38 +61,6 @@ struct TaskCenterView: View {
                 selectedTab = firstTab
             }
         }
-        .popup(
-            isPresented: $showRewardPopup,
-            view: {
-                RewardPopupView(
-                    task: viewModel.swipeTask,
-                    onStartAction: {
-                        showRewardPopup = false
-                        shouldShowAdAfterDismiss = true
-                    }
-                )
-                .ignoresSafeArea(.container, edges: .bottom)
-            },
-            customize: { params in
-                params
-                    .type(.floater(verticalPadding: 0, horizontalPadding: 0, useSafeAreaInset: false))
-                    .backgroundColor(.black.opacity(0.3))
-                    .position(.bottom)
-                    .dragToDismiss(false)
-                    .closeOnTap(false)
-                    .closeOnTapOutside(true)
-                    .allowTapThroughBG(false)
-                    .dismissCallback { dismissSource in
-                        if shouldShowAdAfterDismiss == true {
-                            // 用户点击了展示广告按钮后隐藏的
-                            shouldShowAdAfterDismiss = false
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                                viewModel.swipeVM.watchRewardAd()
-                            }
-                        }
-                    }
-            }
-        )
     }
     
     @ViewBuilder
@@ -231,13 +197,11 @@ struct TaskCenterView: View {
     private func getTaskView(for tab: TaskTab) -> some View {
         switch tab {
         case .daily:
-            DailyTaskView(viewModel: viewModel)
+            DailyTaskView(viewModel: viewModel,dailyVM: viewModel.dailyVM)
         case .swipe:
             SwipeTaskView(
                 viewModel: viewModel,
-                onShowRewardPopup: {
-                    showRewardPopup = true
-                }
+                swipeVM: viewModel.swipeVM  // 传入 swipeVM
             )
         case .brand:
             BrandTaskView(viewModel: viewModel) {

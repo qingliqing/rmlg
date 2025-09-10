@@ -10,7 +10,7 @@ import Foundation
 /// 广告位任务类型枚举
 enum AdSlotTaskType: Int, CaseIterable {
     case dailyTask = 1      // 每日任务
-    case browsing = 2       // 刷刷赚
+    case swipeTask = 2       // 刷刷赚
     case splash = 3         // 开屏
     case banner = 4         // Banner
     case feed = 5           // 信息流
@@ -18,7 +18,7 @@ enum AdSlotTaskType: Int, CaseIterable {
     var displayName: String {
         switch self {
         case .dailyTask: return "每日任务"
-        case .browsing: return "刷刷赚"
+        case .swipeTask: return "刷刷赚"
         case .splash: return "开屏"
         case .banner: return "Banner"
         case .feed: return "信息流"
@@ -28,7 +28,7 @@ enum AdSlotTaskType: Int, CaseIterable {
     var description: String {
         switch self {
         case .dailyTask: return "完成每日广告观看任务"
-        case .browsing: return "通过刷视频获得奖励"
+        case .swipeTask: return "通过刷视频获得奖励"
         case .splash: return "应用启动时的开屏广告"
         case .banner: return "页面顶部或底部横幅广告"
         case .feed: return "信息流中的原生广告"
@@ -38,7 +38,7 @@ enum AdSlotTaskType: Int, CaseIterable {
     /// 是否需要顺序获取广告位（vs 随机获取）
     var requiresSequentialAccess: Bool {
         switch self {
-        case .dailyTask, .browsing:
+        case .dailyTask, .swipeTask:
             return true
         case .splash, .banner, .feed:
             return false

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct DailyTaskView: View {
     @ObservedObject var viewModel: TaskCenterViewModel
+    @ObservedObject var dailyVM: DailyTaskViewModel
     
     var body: some View {
         ZStack(alignment: .top) {

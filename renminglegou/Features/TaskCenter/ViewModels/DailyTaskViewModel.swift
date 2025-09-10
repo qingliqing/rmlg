@@ -1,5 +1,5 @@
 //
-//  RewardAdViewModel.swift
+//  DailyTaskViewModel.swift
 //  TaskCenter
 //
 //  Created by Developer on 2025/8/29.
@@ -80,7 +80,7 @@ final class DailyTaskViewModel: ObservableObject {
     init(slotID: String? = nil) {
         self.currentSlotID = slotID ?? defaultSlotID
         setupRewardAdManager()
-        startCooldownTimer()
+        initializeCooldownState()
     }
     
     // MARK: - Public Configuration Methods
@@ -93,6 +93,7 @@ final class DailyTaskViewModel: ObservableObject {
         // 从 AdSlotManager 获取观看间隔配置
         self.watchIntervalSeconds = adSlotManager.getWatchInterval(for: .dailyTask)
         updateCooldownTime()
+        ensureCooldownTimerRunning()
         
         Logger.info("设置 DailyTaskViewModel 依赖，观看间隔: \(watchIntervalSeconds)秒", category: .adSlot)
     }
@@ -161,38 +162,84 @@ final class DailyTaskViewModel: ObservableObject {
     
     // MARK: - Private Cooldown Methods
     
+    /// 初始化冷却状态
+    private func initializeCooldownState() {
+        updateCooldownTime()
+        ensureCooldownTimerRunning()
+    }
+    
     /// 启动冷却时间定时器
     private func startCooldownTimer() {
+        stopCooldownTimer() // 先停止旧的定时器
+        
         cooldownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.updateCooldownTime()
             }
+        }
+        Logger.info("启动冷却定时器", category: .adSlot)
+    }
+    
+    /// 停止冷却定时器
+    private func stopCooldownTimer() {
+        cooldownTimer?.invalidate()
+        cooldownTimer = nil
+        Logger.info("停止冷却定时器", category: .adSlot)
+    }
+    
+    /// 确保冷却定时器正在运行（当需要倒计时时）
+    private func ensureCooldownTimerRunning() {
+        if cooldownRemaining > 0 && (cooldownTimer == nil || !(cooldownTimer?.isValid ?? false)) {
+            startCooldownTimer()
         }
     }
     
     /// 更新冷却时间
     private func updateCooldownTime() {
         guard let lastWatchTime = userDefaults.object(forKey: lastWatchTimeKey) as? Date else {
-            cooldownRemaining = 0
+            setCooldownRemaining(0)
             return
         }
         
         guard watchIntervalSeconds > 0 else {
-            cooldownRemaining = 0
+            setCooldownRemaining(0)
             return
         }
         
         let timeSinceLastWatch = Date().timeIntervalSince(lastWatchTime)
         let remainingTime = TimeInterval(watchIntervalSeconds) - timeSinceLastWatch
+        let newCooldownRemaining = max(0, Int(remainingTime))
         
-        cooldownRemaining = max(0, Int(remainingTime))
+        setCooldownRemaining(newCooldownRemaining)
+    }
+    
+    /// 设置冷却剩余时间（避免重复更新和管理定时器）
+    private func setCooldownRemaining(_ newValue: Int) {
+        // 只在值变化时才更新，避免不必要的UI刷新
+        guard cooldownRemaining != newValue else { return }
+        
+        cooldownRemaining = newValue
+        
+        // 冷却结束时停止定时器，节省资源
+        if cooldownRemaining == 0 {
+            stopCooldownTimer()
+        }
+        
+        Logger.debug("冷却时间更新: \(cooldownRemaining)秒", category: .adSlot)
     }
     
     /// 记录观看时间
     private func recordWatchTime() {
         userDefaults.set(Date(), forKey: lastWatchTimeKey)
         userDefaults.synchronize()
-        Logger.info("记录每日任务观看时间", category: .adSlot)
+        
+        // 立即更新一次冷却时间
+        updateCooldownTime()
+        
+        // 确保定时器正在运行（如果冷却时间大于0）
+        ensureCooldownTimerRunning()
+        
+        Logger.info("记录每日任务观看时间，冷却剩余: \(cooldownRemaining)秒", category: .adSlot)
     }
     
     // MARK: - Private Methods
@@ -287,7 +334,6 @@ final class DailyTaskViewModel: ObservableObject {
             if verified {
                 // 记录观看时间（开始冷却）
                 recordWatchTime()
-                updateCooldownTime()
                 
                 Task {
                     await onAdWatchCompleted?()

@@ -6,11 +6,13 @@
 //
 
 import SwiftUI
+import PopupView
 
 struct SwipeTaskView: View {
     @ObservedObject var viewModel: TaskCenterViewModel
-    @State private var isWatchingVideo = false
-    let onShowRewardPopup: () -> Void  // 添加回调闭包
+    @ObservedObject var swipeVM: SwipeTaskViewModel  // 直接观察 swipeVM
+    @State private var showRewardPopup = false
+    @State private var shouldShowAdAfterDismiss = false
     
     var body: some View {
         VStack(spacing: 16) {
@@ -30,14 +32,14 @@ struct SwipeTaskView: View {
                         handleSwipeAction()
                     }) {
                         ZStack {
-                            // 按钮状态
+                            // 按钮状态 - 使用 swipeVM 的状态
                             Group {
-                                if !canStartSwipe {
+                                if swipeVM.isTaskCompleted {
                                     Image("swipe_finish_btn")
                                         .resizable()
                                         .scaledToFit()
                                         .frame(width: 250, height: 60)
-                                }else {
+                                } else {
                                     Image("swipe_start_btn")
                                         .resizable()
                                         .scaledToFit()
@@ -46,9 +48,9 @@ struct SwipeTaskView: View {
                             }
                         }
                     }
-                    .disabled(!canStartSwipe)
-                    .scaleEffect(canStartSwipe ? 1.0 : 0.95)
-                    .animation(.easeInOut(duration: 0.2), value: canStartSwipe)
+                    .disabled(!swipeVM.isButtonEnabled)
+                    .scaleEffect(swipeVM.isButtonEnabled ? 1.0 : 0.95)
+                    .animation(.easeInOut(duration: 0.2), value: swipeVM.isButtonEnabled)
                     .padding(.horizontal, 20)
                     .padding(.bottom, 16)
                 }
@@ -57,25 +59,45 @@ struct SwipeTaskView: View {
         }
         .opacity(viewModel.isLoading ? 0.5 : 1.0)
         .animation(.easeInOut(duration: 0.3), value: viewModel.isLoading)
+        .popup(
+            isPresented: $showRewardPopup,
+            view: {
+                RewardPopupView(
+                    task: viewModel.swipeTask,
+                    onStartAction: {
+                        showRewardPopup = false
+                        shouldShowAdAfterDismiss = true  // 设置标记，等待dismiss回调
+                    }
+                )
+                .ignoresSafeArea(.container, edges: .bottom)
+            },
+            customize: { params in
+                params
+                    .type(.floater(verticalPadding: 0, horizontalPadding: 0, useSafeAreaInset: false))
+                    .backgroundColor(.black.opacity(0.3))
+                    .position(.bottom)
+                    .dragToDismiss(false)
+                    .closeOnTap(false)
+                    .closeOnTapOutside(true)
+                    .allowTapThroughBG(false)
+                    .dismissCallback { dismissSource in
+                        // 弹窗动画完成后的回调
+                        if shouldShowAdAfterDismiss {
+                            shouldShowAdAfterDismiss = false
+                            // 不需要延迟，因为动画已经完成
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                                swipeVM.startSwipeTask()
+                            }
+                        }
+                    }
+            }
+        )
     }
     
     // MARK: - Private Methods
     private func handleSwipeAction() {
-        if canStartSwipe {
-            onShowRewardPopup() // 调用回调
+        if swipeVM.isButtonEnabled && !swipeVM.isTaskCompleted {
+            showRewardPopup = true
         }
-    }
-    
-    // MARK: - Computed Properties
-    
-    // 判断是否可以开始刷视频
-    private var canStartSwipe: Bool {
-        return !isSwipeTaskCompleted && !viewModel.isLoading
-    }
-    
-    // 判断刷视频任务是否已完成
-    private var isSwipeTaskCompleted: Bool {
-        guard let swipeTask = viewModel.swipeTask else { return false }
-        return (viewModel.swipeTaskProgress?.currentViewCount ?? 0) >= swipeTask.totalAdCount
     }
 }

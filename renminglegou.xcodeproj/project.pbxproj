@@ -526,7 +526,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"renminglegou/Preview Content\"";
 				DEVELOPMENT_TEAM = NBL9HM43WZ;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				ENABLE_USER_SCRIPT_SANDBOXING = "$(inherited)";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = renminglegou/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "人民乐购";
@@ -570,7 +570,7 @@
 				DEVELOPMENT_ASSET_PATHS = "\"renminglegou/Preview Content\"";
 				DEVELOPMENT_TEAM = NBL9HM43WZ;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				ENABLE_USER_SCRIPT_SANDBOXING = "$(inherited)";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = renminglegou/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "人民乐购";

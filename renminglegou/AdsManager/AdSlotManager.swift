@@ -273,16 +273,16 @@ extension AdSlotManager {
     
     /// 刷刷赚任务广告位相关方法（顺序获取）
     func getCurrentSwipeAdSlotId(currentViewCount: Int) -> String? {
-        return getCurrentAdSlotId(for: .browsing, currentViewCount: currentViewCount)
+        return getCurrentAdSlotId(for: .swipeTask, currentViewCount: currentViewCount)
     }
     
     func getNextSwipeAdSlotId(currentViewCount: Int) -> String? {
-        return getNextAdSlotId(for: .browsing, currentViewCount: currentViewCount)
+        return getNextAdSlotId(for: .swipeTask, currentViewCount: currentViewCount)
     }
     
     /// 刷刷赚任务观看间隔
     func getSwipeTaskWatchInterval() -> Int {
-        return getWatchInterval(for: .browsing)
+        return getWatchInterval(for: .swipeTask)
     }
     
     /// 开屏广告位相关方法（随机获取）
