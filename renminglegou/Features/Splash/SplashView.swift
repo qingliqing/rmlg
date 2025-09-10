@@ -4,7 +4,6 @@
 //
 
 import SwiftUI
-import Network
 import Combine
 
 // MARK: - 启动页状态枚举
@@ -18,7 +17,7 @@ enum SplashState {
 
 // MARK: - 启动页视图
 struct SplashView: View {
-    @EnvironmentObject private var adSDKManager: AdSDKManager
+    @EnvironmentObject private var sdkManager: SDKManager
     @State private var splashData: SplashData
     @State private var remainingTime: TimeInterval = 0
     @State private var isLoading = true
@@ -28,7 +27,6 @@ struct SplashView: View {
     @State private var adLoadStartTime: Date?  // 记录广告加载开始时间
     @State private var isInSplashView: Bool = true  // 是否在当前页面
     
-    @StateObject private var networkMonitor = NetworkMonitor()
     @StateObject private var splashCache = SplashCache.shared
     @ObservedObject private var splashAdManager = SplashAdManager.shared
     
@@ -58,9 +56,15 @@ struct SplashView: View {
         .onDisappear {
             cleanupSplashView()
         }
-        .onReceive(networkMonitor.$isConnected) { isConnected in
+        .onReceive(sdkManager.$isNetworkConnected) { isConnected in
             if isConnected {
                 fetchSplashData()
+            }
+        }
+        .onReceive(sdkManager.$adSDKInitialized) { isInitialized in
+            if isInitialized && currentState == .showingSplash && !isAdLoaded {
+                Logger.info("广告SDK初始化完成，开始预加载开屏广告", category: .adSlot)
+                preloadSplashAd()
             }
         }
     }
@@ -91,7 +95,7 @@ struct SplashView: View {
     
     // 设置开屏广告管理器和事件监听
     private func setupSplashAdManager() {
-        print("设置开屏广告管理器")
+        Logger.info("设置开屏广告管理器", category: .adSlot)
         
         // 通知 SplashAdManager 当前在启动页
         splashAdManager.setInSplashView(true)
@@ -109,7 +113,7 @@ struct SplashView: View {
         // 监听广告预加载完成
         NotificationCenter.default.publisher(for: .splashAdLoadSuccess)
             .sink { _ in
-                print("开屏广告预加载完成")
+                Logger.success("开屏广告预加载完成", category: .adSlot)
                 handleAdDidLoad()
             }
             .store(in: &adEventCancellables)
@@ -117,7 +121,7 @@ struct SplashView: View {
         // 监听广告展示
         NotificationCenter.default.publisher(for: .splashAdDidShow)
             .sink { _ in
-                print("开屏广告开始展示")
+                Logger.info("开屏广告开始展示", category: .adSlot)
                 handleAdDidShow()
             }
             .store(in: &adEventCancellables)
@@ -125,7 +129,7 @@ struct SplashView: View {
         // 监听广告关闭
         NotificationCenter.default.publisher(for: .splashAdDidClose)
             .sink { _ in
-                print("开屏广告关闭，进入主页面")
+                Logger.info("开屏广告关闭，进入主页面", category: .adSlot)
                 handleAdDidClose()
             }
             .store(in: &adEventCancellables)
@@ -133,7 +137,7 @@ struct SplashView: View {
         // 监听广告加载失败
         NotificationCenter.default.publisher(for: .splashAdLoadFailed)
             .sink { _ in
-                print("开屏广告预加载失败")
+                Logger.warning("开屏广告预加载失败", category: .adSlot)
                 handleAdLoadFailed()
             }
             .store(in: &adEventCancellables)
@@ -141,7 +145,7 @@ struct SplashView: View {
         // 监听广告展示失败
         NotificationCenter.default.publisher(for: .splashAdShowFailed)
             .sink { _ in
-                print("开屏广告显示失败")
+                Logger.warning("开屏广告显示失败", category: .adSlot)
                 handleAdShowFailed()
             }
             .store(in: &adEventCancellables)
@@ -149,7 +153,7 @@ struct SplashView: View {
     
     // 清理启动页资源
     private func cleanupSplashView() {
-        print("清理启动页资源")
+        Logger.info("清理启动页资源", category: .ui)
         
         // 取消所有广告事件监听
         adEventCancellables.removeAll()
@@ -168,24 +172,24 @@ struct SplashView: View {
     
     // 初始化流程
     private func initializeSplash() {
-        print("初始化启动页流程")
+        Logger.info("初始化启动页流程", category: .ui)
         currentState = .loading
         
         // 如果有缓存数据，立即显示
         if let cachedData = splashCache.getCachedSplashData() {
-            print("使用缓存数据")
+            Logger.info("使用缓存的启动页数据", category: .ui)
             splashData = cachedData
             proceedToNextStep()
         }
         
         // 并行处理：无论是否有缓存，都尝试获取最新数据
-        if networkMonitor.isConnected {
+        if sdkManager.isNetworkConnected {
             fetchSplashData()
         } else {
             // 没有网络时，给一个短暂的等待时间
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                 if self.currentState == .loading {
-                    print("网络等待超时，继续流程")
+                    Logger.warning("网络等待超时，继续流程", category: .network)
                     self.proceedToNextStep()
                 }
             }
@@ -194,7 +198,7 @@ struct SplashView: View {
     
     // 统一的流程控制
     private func proceedToNextStep() {
-        print("当前状态: \(currentState)")
+        Logger.debug("当前状态: \(currentState.debugDescription)", category: .ui)
         
         switch currentState {
         case .loading:
@@ -203,7 +207,7 @@ struct SplashView: View {
             startSplashCountdown()
             
             // 立即开始预加载广告（如果 SDK 已初始化）
-            if adSDKManager.isInitialized {
+            if sdkManager.adSDKInitialized {
                 preloadSplashAd()
             }
             
@@ -214,16 +218,16 @@ struct SplashView: View {
             
             if isAdLoaded {
                 // 广告已经加载好，立即显示
-                print("广告已预加载完成，立即显示")
+                Logger.info("广告已预加载完成，立即显示", category: .adSlot)
                 showPreloadedAd()
-            } else if adSDKManager.isInitialized {
+            } else if sdkManager.adSDKInitialized {
                 // 广告还在加载，等待一段时间
-                print("广告还在加载，等待完成...")
+                Logger.info("广告还在加载，等待完成...", category: .adSlot)
                 currentState = .adReady
                 waitForAdOrTimeout()
             } else {
                 // 没有广告，直接进入主页面
-                print("没有广告，直接进入主页面")
+                Logger.info("广告SDK未初始化，直接进入主页面", category: .adSlot)
                 currentState = .finished
                 enterWebView()
             }
@@ -243,13 +247,23 @@ struct SplashView: View {
     
     // 预加载开屏广告
     private func preloadSplashAd() {
-        print("开始预加载开屏广告")
+        Logger.info("开始预加载开屏广告", category: .adSlot)
         adLoadStartTime = Date()
+        
+        // 获取开屏广告位ID
+        let adSlotManager = sdkManager.getAdSlotManager()
+        guard let adSlotId = adSlotManager.getCurrentSplashAdSlotId() else {
+            Logger.warning("未找到开屏广告位ID", category: .adSlot)
+            handleAdLoadFailed()
+            return
+        }
+        
+        Logger.info("使用开屏广告位ID: \(adSlotId)", category: .adSlot)
         
         // 设置预加载超时（给足够时间）
         DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) {
             if !self.isAdLoaded && (self.currentState == .showingSplash || self.currentState == .adReady) {
-                print("广告预加载超时")
+                Logger.warning("广告预加载超时", category: .adSlot)
                 self.handleAdLoadFailed()
             }
         }
@@ -263,10 +277,10 @@ struct SplashView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             if self.currentState == .adReady {
                 if self.isAdLoaded {
-                    print("广告加载完成，开始显示")
+                    Logger.info("广告加载完成，开始显示", category: .adSlot)
                     self.showPreloadedAd()
                 } else {
-                    print("等待广告超时，直接进入主页面")
+                    Logger.warning("等待广告超时，直接进入主页面", category: .adSlot)
                     self.currentState = .finished
                     self.enterWebView()
                 }
@@ -277,7 +291,7 @@ struct SplashView: View {
     // 显示已预加载的广告
     private func showPreloadedAd() {
         currentState = .showingAd
-        print("显示预加载的开屏广告")
+        Logger.info("显示预加载的开屏广告", category: .adSlot)
         // 广告已经在 SplashAdManager.loadSplashAd() 中自动显示了
     }
     
@@ -290,7 +304,7 @@ struct SplashView: View {
     
     // 启动页倒计时
     private func startSplashCountdown() {
-        print("开始启动页倒计时: \(splashData.displayDuration)秒")
+        Logger.info("开始启动页倒计时: \(splashData.displayDuration)秒", category: .ui)
         remainingTime = splashData.displayDuration
         
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
@@ -305,32 +319,30 @@ struct SplashView: View {
     
     // 广告事件处理
     private func handleAdDidLoad() {
-        
         isAdLoaded = true
         
         if let startTime = adLoadStartTime {
             let loadTime = Date().timeIntervalSince(startTime)
-            print("广告预加载完成，耗时: \(String(format: "%.2f", loadTime))秒")
+            Logger.success("广告预加载完成，耗时: \(String(format: "%.2f", loadTime))秒", category: .adSlot)
         }
         
         // 如果启动页已经结束，立即显示广告
         if currentState == .adReady {
-            print("启动页已结束，立即显示预加载的广告")
+            Logger.info("启动页已结束，立即显示预加载的广告", category: .adSlot)
             showPreloadedAd()
         }
     }
     
     private func handleAdLoadFailed() {
-        
         isAdLoaded = false
         
         // 根据当前状态决定下一步
         if currentState == .showingSplash {
             // 还在启动页，继续倒计时，到时候直接进主页面
-            print("广告预加载失败，启动页结束后直接进入主页面")
+            Logger.info("广告预加载失败，启动页结束后直接进入主页面", category: .adSlot)
         } else if currentState == .adReady {
             // 启动页已结束，直接进主页面
-            print("广告加载失败，直接进入主页面")
+            Logger.info("广告加载失败，直接进入主页面", category: .adSlot)
             currentState = .finished
             enterWebView()
         }
@@ -338,28 +350,27 @@ struct SplashView: View {
     
     private func handleAdDidShow() {
         guard currentState == .showingAd else {
-            print("广告显示时状态不匹配或已进入主页面")
+            Logger.warning("广告显示时状态不匹配或已进入主页面", category: .adSlot)
             return
         }
         
-        print("预加载的开屏广告显示成功")
+        Logger.success("预加载的开屏广告显示成功", category: .adSlot)
     }
     
     private func handleAdDidClose() {
         guard currentState == .showingAd else {
-            print("广告关闭时状态不匹配或已进入主页面")
+            Logger.warning("广告关闭时状态不匹配或已进入主页面", category: .adSlot)
             return
         }
         
-        print("开屏广告关闭，进入主页面")
+        Logger.info("开屏广告关闭，进入主页面", category: .adSlot)
         currentState = .finished
         enterWebView()
     }
     
     private func handleAdShowFailed() {
-        
         if currentState == .showingAd {
-            print("预加载广告显示失败，直接进入主页面")
+            Logger.warning("预加载广告显示失败，直接进入主页面", category: .adSlot)
             currentState = .finished
             enterWebView()
         }
@@ -367,7 +378,7 @@ struct SplashView: View {
     
     // 进入主页面
     private func enterWebView() {
-        print("进入主页面")
+        Logger.info("进入主页面", category: .ui)
         
         // 立即标记已离开启动页并清理资源
         cleanupSplashView()
@@ -422,7 +433,7 @@ struct SplashView: View {
     
     // 获取启动页数据
     private func fetchSplashData() {
-        print("开始获取启动页数据...")
+        Logger.info("开始获取启动页数据...", category: .network)
         
         Task {
             do {
@@ -435,6 +446,7 @@ struct SplashView: View {
                     let needsUpdate = !splashCache.isCacheValid(for: data)
                     
                     if needsUpdate {
+                        Logger.info("获取到新的启动页数据", category: .network)
                         self.splashData = data
                         
                         if let imageURL = data.imageURL, !imageURL.isEmpty {
@@ -442,6 +454,8 @@ struct SplashView: View {
                         } else {
                             splashCache.cacheSplashData(data, image: nil)
                         }
+                    } else {
+                        Logger.info("启动页数据无需更新", category: .network)
                     }
                     
                     // 如果还在加载状态，继续下一步
@@ -450,7 +464,7 @@ struct SplashView: View {
                     }
                 }
             } catch {
-                print("获取启动页数据失败: \(error)")
+                Logger.error("获取启动页数据失败: \(error.localizedDescription)", category: .network)
                 
                 await MainActor.run {
                     if currentState == .loading {
@@ -478,14 +492,16 @@ struct SplashView: View {
                 if let image = UIImage(data: data) {
                     await MainActor.run {
                         splashCache.cacheSplashData(splashData, image: image)
+                        Logger.success("启动页图片缓存成功", category: .ui)
                     }
                 } else {
                     await MainActor.run {
                         splashCache.cacheSplashData(splashData, image: nil)
+                        Logger.warning("启动页图片解析失败", category: .ui)
                     }
                 }
             } catch {
-                print("缓存图片失败: \(error)")
+                Logger.error("缓存启动页图片失败: \(error.localizedDescription)", category: .network)
                 await MainActor.run {
                     splashCache.cacheSplashData(splashData, image: nil)
                 }
@@ -494,55 +510,25 @@ struct SplashView: View {
     }
 }
 
-// MARK: - 网络监控类
-class NetworkMonitor: ObservableObject {
-    private let monitor = NWPathMonitor()
-    private let queue = DispatchQueue(label: "NetworkMonitor")
-    
-    @Published var isConnected = false
-    @Published var connectionType: NWInterface.InterfaceType?
-    
-    init() {
-        // 立即检查当前网络状态
-        checkInitialNetworkStatus()
-        
-        monitor.pathUpdateHandler = { [weak self] path in
-            DispatchQueue.main.async {
-                let wasConnected = self?.isConnected ?? false
-                let isConnected = path.status == .satisfied
-                
-                self?.isConnected = isConnected
-                self?.connectionType = path.availableInterfaces.first?.type
-                
-                print("网络状态更新: \(isConnected ? "已连接" : "未连接")")
-                if let type = self?.connectionType {
-                    print("连接类型: \(type)")
-                }
-                
-                // 如果从未连接变为已连接，触发额外的日志
-                if !wasConnected && isConnected {
-                    print("网络恢复连接")
-                }
-            }
+// MARK: - SplashState Extension for Debug
+extension SplashState {
+    var debugDescription: String {
+        switch self {
+        case .loading:
+            return "加载中"
+        case .showingSplash:
+            return "启动页"
+        case .adReady:
+            return "广告就绪"
+        case .showingAd:
+            return "显示广告"
+        case .finished:
+            return "完成"
         }
-        monitor.start(queue: queue)
-    }
-    
-    private func checkInitialNetworkStatus() {
-        // 使用更简单的方法快速检查网络状态
-        let path = NWPathMonitor().currentPath
-        DispatchQueue.main.async {
-            self.isConnected = path.status == .satisfied
-            self.connectionType = path.availableInterfaces.first?.type
-            print("初始网络状态: \(self.isConnected ? "已连接" : "未连接")")
-        }
-    }
-    
-    deinit {
-        monitor.cancel()
     }
 }
 
 #Preview {
     SplashView()
+        .environmentObject(SDKManager.shared)
 }

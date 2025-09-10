@@ -1,12 +1,81 @@
 //
-//  H5MessageHandler+Extensions.swift
+//  H5MessageHandler.swift
 //  renminglegou
 //
 //  Created by abc on 2025/8/11.
 //
 
+import WebKit
 import UIKit
 import SwiftUI
+
+class H5MessageHandler: NSObject {
+    
+    static func receiveScriptMessage(_ message: WKScriptMessage, selfVC: UIViewController?, webView: WKWebView?) {
+        
+        switch message.name {
+        case "onLoginEvent":
+            handleLogin(message.body)
+        case "onLogoutEvent":
+            handleLogout()
+        case "openUnionPay":
+            handleOpenUnionPay(message.body, selfVC: selfVC)
+        case "openSkit":
+            handleOpenSkit(selfVC: selfVC)
+        case "openVidel":
+            handleOpenVideo(selfVC: selfVC)
+        case "openTaskCenter":
+            handleOpenTaskCenter(message.body)
+        case "onCertificationSuccess":
+            handleCertificationSuccess(selfVC: selfVC)
+        case "onFinishPage":
+            handleFinishPage(selfVC: selfVC)
+        case "jumpToAppStore":
+            handleJumpToAppStore(message.body)
+        case "getUserId":
+            handleGetUserId(message.body)
+        case "shareWx":
+            handleShareWx(message.body, selfVC: selfVC)
+        default:
+            print("未处理的消息: \(message.name)")
+        }
+    }
+    
+    // 修改任务中心处理方法
+    private static func handleOpenTaskCenter(_ body: Any) {
+        
+        // 解析参数
+        var params: [String: AnyHashable]? = nil
+        if let bodyDict = body as? [String: Any] {
+            var hashableDict: [String: AnyHashable] = [:]
+            for (key, value) in bodyDict {
+                if let hashableValue = value as? AnyHashable {
+                    hashableDict[key] = hashableValue
+                }
+            }
+            params = hashableDict
+        }
+        
+        // 使用 SwiftUI 导航
+        DispatchQueue.main.async {
+            Router.push(.taskCenter(params: params))
+        }
+    }
+    
+    
+    static func h5CallJSReturnValue(prompt: String, completionHandler: @escaping (String?) -> Void) {
+        switch prompt {
+        case "getCacheSize":
+            let cacheSize = CacheManager.getCacheSize()
+            completionHandler(cacheSize)
+        case "cleanCache":
+            CacheManager.cleanCache()
+            completionHandler("true")
+        default:
+            completionHandler("")
+        }
+    }
+}
 
 extension H5MessageHandler {
     

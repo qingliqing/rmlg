@@ -76,9 +76,8 @@ struct DailyTaskView: View {
                 
                 // 完成按钮
                 Button(action: {
-                    if viewModel.canWatchDailyAd {
-                        viewModel.watchDailyTaskAd()
-                    }
+                    // 直接调用 dailyVM 的方法（会自动检查冷却时间）
+                    viewModel.dailyVM.watchRewardAd()
                 }) {
                     ZStack {
                         // 背景图片
@@ -92,7 +91,10 @@ struct DailyTaskView: View {
                             RoundedRectangle(cornerRadius: 30)
                                 .fill(
                                     LinearGradient(
-                                        gradient: Gradient(colors: [Color.blue, Color.purple]),
+                                        gradient: Gradient(colors: [
+                                            viewModel.dailyVM.isButtonEnabled ? Color.blue : Color.gray,
+                                            viewModel.dailyVM.isButtonEnabled ? Color.purple : Color.gray.opacity(0.8)
+                                        ]),
                                         startPoint: .leading,
                                         endPoint: .trailing
                                     )
@@ -100,23 +102,16 @@ struct DailyTaskView: View {
                                 .frame(width: 250, height: 60)
                         }
                         
-                        // 按钮文字 - 根据状态显示不同内容
-                        Group {
-                            if !viewModel.canWatchDailyAd {
-                                Text(viewModel.dailyTaskProgress?.currentViewCount ?? 0 >= maxTaskCount ? "已完成" : "暂不可用")
-                                    .font(.system(size: 24, weight: .medium))
-                                    .foregroundStyle(.white.opacity(0.7))
-                            } else {
-                                Text("看视频")
-                                    .font(.system(size: 28, weight: .bold))
-                                    .foregroundStyle(.white)
-                            }
-                        }
+                        // 按钮文字 - 使用 dailyVM 的 buttonText（会自动显示倒计时）
+                        Text(viewModel.dailyVM.buttonText)
+                            .font(.system(size: viewModel.dailyVM.cooldownRemaining > 0 ? 20 : 28, weight: .bold))
+                            .foregroundStyle(.white)
+                            .opacity(viewModel.dailyVM.isButtonEnabled ? 1.0 : 0.7)
                     }
                 }
-                .disabled(!viewModel.canWatchDailyAd)
-                .scaleEffect(viewModel.canWatchDailyAd ? 1.0 : 0.95)
-                .animation(.easeInOut(duration: 0.2), value: viewModel.canWatchDailyAd)
+                .disabled(!viewModel.dailyVM.isButtonEnabled)
+                .scaleEffect(viewModel.dailyVM.isButtonEnabled ? 1.0 : 0.95)
+                .animation(.easeInOut(duration: 0.2), value: viewModel.dailyVM.isButtonEnabled)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
             }

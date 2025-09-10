@@ -26,7 +26,7 @@ target 'renminglegou' do
   pod 'GMMintegralAdapter-Beta', '7.7.7.1'
   pod 'GMSigmobAdapter-Beta', '4.20.0.0'
   pod 'GMUnityAdapter-Beta', '4.3.0.1'
-  pod 'GMAdmobAdapter-Beta', '10.0.0.1'
+#  pod 'GMAdmobAdapter-Beta', '10.0.0.1'
   
   # 引入使用到的ADN SDK，开发者请按需引入
   pod 'GDTMobSDK', '4.15.41'
@@ -34,7 +34,7 @@ target 'renminglegou' do
   pod 'KSAdSDK', '4.6.30.1'
   pod 'SigmobAd-iOS', '4.20.0'
   pod 'MintegralAdSDK', '7.7.7'
-  pod 'Google-Mobile-Ads-SDK', '10.0.0'
+#  pod 'Google-Mobile-Ads-SDK', '10.0.0'
   pod 'UnityAds', '4.3.0'
   
   # 设置线上打包tag,该tag不再执行adapter自动更新，此时以adapter自动更新的最后一次结果去加载各adapter的版本

@@ -1,5 +1,5 @@
 //
-//  NetworkLogger.swift
+//  NetworkLogger.swift (Fixed Thread Safety Issues)
 //  TaskCenter
 //
 //  Created by Developer on 2025/8/24.
@@ -10,17 +10,26 @@ import Alamofire
 
 // MARK: - 网络日志配置
 struct NetworkLoggerConfig {
-    /// 是否启用日志
+    /// 是否启用网络日志
     static var isEnabled: Bool = true
     
     /// 是否启用详细模式（包含请求体和响应体）
     static var isVerboseMode: Bool = true
     
-    /// 响应体最大显示长度
-    static var maxResponseBodyLength: Int = 2000
+    /// 响应体最大显示长度（0表示不限制）
+    static var maxResponseBodyLength: Int = 0
     
     /// 是否在Release模式下启用
     static var enableInRelease: Bool = false
+    
+    /// 敏感字段关键字（用于隐藏敏感信息）
+    static var sensitiveFields: Set<String> = [
+        "authorization", "token", "password", "secret",
+        "key", "auth", "bearer", "credential"
+    ]
+    
+    /// 请求超时阈值（秒），超过此时间会标记为慢请求
+    static var slowRequestThreshold: TimeInterval = 3.0
 }
 
 // MARK: - 网络日志工具
@@ -30,12 +39,16 @@ class NetworkLogger {
     static let shared = NetworkLogger()
     private init() {}
     
+    // MARK: - 私有属性
+    private var requestStartTimes: [String: Date] = [:]
+    private let requestQueue = DispatchQueue(label: "network.logger.queue", attributes: .concurrent)
+    
     // MARK: - 日志开关检查
     private var shouldLog: Bool {
         #if DEBUG
-        return NetworkLoggerConfig.isEnabled
+        return NetworkLoggerConfig.isEnabled && Logger.isEnabled
         #else
-        return NetworkLoggerConfig.isEnabled && NetworkLoggerConfig.enableInRelease
+        return NetworkLoggerConfig.isEnabled && NetworkLoggerConfig.enableInRelease && Logger.isEnabled
         #endif
     }
     
@@ -45,26 +58,54 @@ class NetworkLogger {
     func logRequest(
         url: URL,
         method: HTTPMethod,
-        parameters: Parameters?,
-        headers: HTTPHeaders,
+        parameters: Parameters? = nil,
+        headers: HTTPHeaders = HTTPHeaders(),
         responseType: Any.Type
     ) {
         guard shouldLog else { return }
         
-        print("\n" + "="*80)
-        print("📤 网络请求开始")
-        print("="*80)
-        print("🔗 URL: \(url.absoluteString)")
-        print("🎯 Method: \(method.rawValue)")
-        print("📝 Response Type: \(responseType)")
-        print("⏰ Time: \(currentTimeString)")
+        let requestId = generateRequestId(url: url, method: method)
         
-        if NetworkLoggerConfig.isVerboseMode {
-            logParameters(parameters)
-            logHeaders(headers)
+        // 🔧 修复：使用 barrier 确保写操作的线程安全
+        requestQueue.async(flags: .barrier) { [weak self] in
+            self?.requestStartTimes[requestId] = Date()
         }
         
-        print("="*80)
+        let separator = String(repeating: "=", count: 80)
+        var logMessage = """
+        
+        \(separator)
+        📤 网络请求开始
+        \(separator)
+        🔗 URL: \(url.absoluteString)
+        🎯 Method: \(method.rawValue)
+        📝 Response Type: \(responseType)
+        🆔 Request ID: \(requestId)
+        ⏰ Time: \(currentTimeString)
+        """
+        
+        if NetworkLoggerConfig.isVerboseMode {
+            if let params = parameters, !params.isEmpty {
+                logMessage += "\n📋 Parameters:"
+                for (key, value) in params {
+                    logMessage += "\n   \(key): \(value)"
+                }
+            } else {
+                logMessage += "\n📋 Parameters: 无"
+            }
+            
+            if !headers.isEmpty {
+                logMessage += "\n📨 Headers:"
+                for header in headers {
+                    let headerValue = isSensitiveField(header.name) ? "***" : header.value
+                    logMessage += "\n   \(header.name): \(headerValue)"
+                }
+            }
+        }
+        
+        logMessage += "\n\(separator)"
+        
+        Logger.log(logMessage, level: .network, category: .network)
     }
     
     /// 记录响应
@@ -75,53 +116,138 @@ class NetworkLogger {
     ) {
         guard shouldLog else { return }
         
-        print("\n" + "="*80)
-        print("📥 网络响应")
-        print("="*80)
-        print("🔗 URL: \(url.absoluteString)")
-        print("🎯 Method: \(method.rawValue)")
-        print("⏰ Time: \(currentTimeString)")
+        let requestId = generateRequestId(url: url, method: method)
         
-        logStatusCode(response.response)
-        
-        if NetworkLoggerConfig.isVerboseMode {
-            logResponseBody(response.data)
+        // 🔧 修复：异步计算持续时间和清理，避免阻塞
+        requestQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            let duration = self.calculateDurationUnsafe(for: requestId)
+            let isSlowRequest = duration > NetworkLoggerConfig.slowRequestThreshold
+            
+            let separator = String(repeating: "=", count: 80)
+            let durationEmoji = isSlowRequest ? "🐌" : "⚡"
+            let statusEmoji = self.getStatusEmoji(response.response?.statusCode)
+            
+            var logMessage = """
+            
+            \(separator)
+            📥 网络响应
+            \(separator)
+            🔗 URL: \(url.absoluteString)
+            🎯 Method: \(method.rawValue)
+            🆔 Request ID: \(requestId)
+            ⏰ Time: \(self.currentTimeString)
+            \(durationEmoji) Duration: \(String(format: "%.3f", duration))s\(isSlowRequest ? " (慢请求)" : "")
+            """
+            
+            // 状态码信息
+            if let httpResponse = response.response {
+                let statusCode = httpResponse.statusCode
+                logMessage += "\n\(statusEmoji) Status Code: \(statusCode)"
+                
+                if NetworkLoggerConfig.isVerboseMode {
+                    logMessage += "\n📨 Response Headers:"
+                    for (key, value) in httpResponse.allHeaderFields {
+                        logMessage += "\n   \(key): \(value)"
+                    }
+                }
+            }
+            
+            // 响应体信息
+            if let data = response.data, NetworkLoggerConfig.isVerboseMode {
+                logMessage += "\n📊 Response Size: \(self.formatBytes(data.count))"
+                
+                if let responseBodyString = self.formatResponseBody(data) {
+                    logMessage += "\n📄 Response Body:\n\(responseBodyString)"
+                }
+            }
+            
+            // 错误信息
+            if let error = response.error {
+                logMessage += "\n❌ Error: \(error.localizedDescription)"
+                logMessage += self.formatNetworkError(error)
+            }
+            
+            logMessage += "\n\(separator)"
+            
+            // 根据响应状态选择日志级别
+            let logLevel: Logger.Level = response.error != nil ? .error :
+                                       (response.response?.statusCode ?? 0 >= 400 ? .warning : .success)
+            
+            // 在主线程输出日志
+            DispatchQueue.main.async {
+                Logger.log(logMessage, level: logLevel, category: .network)
+            }
+            
+            // 🔧 修复：使用 barrier 清理请求时间记录
+            self.requestQueue.async(flags: .barrier) {
+                self.requestStartTimes.removeValue(forKey: requestId)
+            }
         }
-        
-        if let error = response.error {
-            logNetworkError(error)
-        }
-        
-        print("="*80)
     }
     
     /// 记录成功解析
-    func logSuccess(message: String, responseType: Any.Type) {
+    func logSuccess(_ message: String, responseType: Any.Type) {
         guard shouldLog else { return }
-        print("✅ \(message) - 类型: \(responseType)")
+        Logger.success("✅ \(message) - 类型: \(responseType)", category: .network)
     }
     
     /// 记录警告
-    func logWarning(message: String, error: Error? = nil) {
+    func logWarning(_ message: String, error: Error? = nil) {
         guard shouldLog else { return }
-        print("⚠️  \(message)")
+        var logMessage = "⚠️ \(message)"
         if let error = error {
-            print("   详情: \(error.localizedDescription)")
+            logMessage += "\n   详情: \(error.localizedDescription)"
         }
+        Logger.warning(logMessage, category: .network)
     }
     
     /// 记录错误
-    func logError(message: String, error: Error) {
+    func logError(_ message: String, error: Error) {
         guard shouldLog else { return }
-        print("❌ \(message)")
-        print("   错误详情: \(error.localizedDescription)")
-        print("   错误类型: \(type(of: error))")
+        let logMessage = """
+        ❌ \(message)
+           错误详情: \(error.localizedDescription)
+           错误类型: \(type(of: error))
+        """
+        Logger.error(logMessage, category: .network)
     }
     
-    /// 记录自定义消息
-    func log(_ message: String, level: LogLevel = .info) {
+    /// 记录自定义网络消息
+    func log(_ message: String, level: Logger.Level = .info) {
         guard shouldLog else { return }
-        print("\(level.emoji) \(message)")
+        Logger.log(message, level: level, category: .network)
+    }
+    
+    /// 记录网络配置信息
+    func logNetworkConfig(_ config: [String: Any], title: String = "网络配置") {
+        guard shouldLog else { return }
+        Logger.logJSON(config, title: title, category: .network)
+    }
+    
+    /// 记录网络统计信息
+    func logNetworkStats() {
+        guard shouldLog else { return }
+        
+        requestQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            let activeRequests = self.requestStartTimes.count
+            let oldestRequest = self.requestStartTimes.values.min()
+            let oldestDuration = oldestRequest.map { Date().timeIntervalSince($0) }
+            
+            let stats = [
+                "activeRequests": activeRequests,
+                "oldestRequestDuration": oldestDuration?.description ?? "N/A",
+                "configEnabled": NetworkLoggerConfig.isEnabled,
+                "verboseMode": NetworkLoggerConfig.isVerboseMode
+            ]
+            
+            DispatchQueue.main.async {
+                Logger.logJSON(stats, title: "网络统计信息", category: .network)
+            }
+        }
     }
 }
 
@@ -130,125 +256,182 @@ private extension NetworkLogger {
     
     /// 当前时间字符串
     var currentTimeString: String {
-        DateFormatter.logFormatter.string(from: Date())
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss.SSS"
+        return formatter.string(from: Date())
     }
     
-    /// 记录请求参数
-    func logParameters(_ parameters: Parameters?) {
-        if let parameters = parameters, !parameters.isEmpty {
-            print("📋 Parameters:")
-            for (key, value) in parameters {
-                print("   \(key): \(value)")
-            }
-        } else {
-            print("📋 Parameters: 无")
+    /// 生成请求ID
+    func generateRequestId(url: URL, method: HTTPMethod) -> String {
+        // 🔧 修复：添加 nil 检查和更安全的哈希生成
+        guard !url.absoluteString.isEmpty else {
+            return "INVALID-\(Date().timeIntervalSince1970)"
         }
-    }
-    
-    /// 记录请求头
-    func logHeaders(_ headers: HTTPHeaders) {
-        print("📨 Headers:")
-        for header in headers {
-            if header.name.lowercased().contains("authorization") {
-                // 隐藏敏感信息
-                print("   \(header.name): Bearer ***")
-            } else {
-                print("   \(header.name): \(header.value)")
-            }
-        }
-    }
-    
-    /// 记录状态码
-    func logStatusCode(_ response: HTTPURLResponse?) {
-        if let httpResponse = response {
-            let statusCode = httpResponse.statusCode
-            let statusEmoji = statusCode >= 200 && statusCode < 300 ? "✅" : "❌"
-            print("\(statusEmoji) Status Code: \(statusCode)")
-        }
-    }
-    
-    /// 记录响应体
-    func logResponseBody(_ data: Data?) {
-        if let data = data {
-            print("📊 Response Size: \(data.count) bytes")
-            
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("📄 Response Body:")
-                
-                // 格式化JSON输出
-                let formattedJson = formatJsonString(jsonString)
-                let truncatedString = formattedJson.count > NetworkLoggerConfig.maxResponseBodyLength
-                    ? String(formattedJson.prefix(NetworkLoggerConfig.maxResponseBodyLength)) + "\n... (内容被截断)"
-                    : formattedJson
-                
-                print(truncatedString)
-            } else {
-                print("📄 Response Body: [二进制数据，无法显示]")
-            }
-        } else {
-            print("📄 Response Body: 无数据")
-        }
-    }
-    
-    /// 记录网络错误
-    func logNetworkError(_ error: AFError) {
-        print("❌ Network Error: \(error.localizedDescription)")
         
-        // 详细错误信息
-        switch error {
-        case .responseValidationFailed(let reason):
-            print("   验证失败: \(reason)")
-        case .responseSerializationFailed(let reason):
-            print("   序列化失败: \(reason)")
-        default:
-            break
+        let urlHash = abs(url.absoluteString.hashValue)
+        let methodPrefix = method.rawValue.prefix(3).uppercased()
+        let timestamp = String(Date().timeIntervalSince1970 * 1000).suffix(8) // 使用毫秒时间戳
+        return "\(methodPrefix)-\(urlHash)-\(timestamp)"
+    }
+    
+    /// 计算请求持续时间（线程安全版本）
+    func calculateDuration(for requestId: String) -> TimeInterval {
+        return requestQueue.sync {
+            return calculateDurationUnsafe(for: requestId)
         }
+    }
+    
+    /// 计算请求持续时间（非线程安全，仅内部使用）
+    func calculateDurationUnsafe(for requestId: String) -> TimeInterval {
+        guard let startTime = requestStartTimes[requestId] else {
+            return 0
+        }
+        return Date().timeIntervalSince(startTime)
+    }
+    
+    /// 检查是否为敏感字段
+    func isSensitiveField(_ fieldName: String) -> Bool {
+        let lowercasedName = fieldName.lowercased()
+        return NetworkLoggerConfig.sensitiveFields.contains { keyword in
+            lowercasedName.contains(keyword)
+        }
+    }
+    
+    /// 获取状态码对应的emoji
+    func getStatusEmoji(_ statusCode: Int?) -> String {
+        guard let code = statusCode else { return "❓" }
+        
+        switch code {
+        case 200..<300:
+            return "✅"
+        case 300..<400:
+            return "🔄"
+        case 400..<500:
+            return "⚠️"
+        case 500...:
+            return "❌"
+        default:
+            return "❓"
+        }
+    }
+    
+    /// 格式化字节数
+    func formatBytes(_ bytes: Int) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useBytes, .useKB, .useMB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: Int64(bytes))
+    }
+    
+    /// 格式化响应体
+    func formatResponseBody(_ data: Data) -> String? {
+        guard let jsonString = String(data: data, encoding: .utf8) else {
+            return "[二进制数据，无法显示]"
+        }
+        
+        // 尝试格式化JSON
+        let formattedJson = formatJsonString(jsonString) ?? jsonString
+        
+        // 如果设置了最大长度限制且内容超长，则截断
+        if NetworkLoggerConfig.maxResponseBodyLength > 0 &&
+           formattedJson.count > NetworkLoggerConfig.maxResponseBodyLength {
+            return String(formattedJson.prefix(NetworkLoggerConfig.maxResponseBodyLength)) +
+                   "\n... (内容被截断，总长度: \(formattedJson.count) 字符)"
+        }
+        
+        return formattedJson
     }
     
     /// 格式化JSON字符串
-    func formatJsonString(_ jsonString: String) -> String {
-        guard let jsonData = jsonString.data(using: .utf8),
-              let jsonObject = try? JSONSerialization.jsonObject(with: jsonData),
-              let prettyJsonData = try? JSONSerialization.data(withJSONObject: jsonObject, options: .prettyPrinted),
-              let prettyJsonString = String(data: prettyJsonData, encoding: .utf8) else {
-            return jsonString
+    func formatJsonString(_ jsonString: String) -> String? {
+        guard let jsonData = jsonString.data(using: .utf8) else { return nil }
+        
+        do {
+            let jsonObject = try JSONSerialization.jsonObject(with: jsonData)
+            let prettyJsonData = try JSONSerialization.data(
+                withJSONObject: jsonObject,
+                options: [.prettyPrinted, .sortedKeys]
+            )
+            return String(data: prettyJsonData, encoding: .utf8)
+        } catch {
+            // JSON 解析失败，返回原始字符串
+            return nil
         }
-        return prettyJsonString
     }
-}
-
-// MARK: - 日志级别
-enum LogLevel {
-    case info
-    case warning
-    case error
-    case success
     
-    var emoji: String {
-        switch self {
-        case .info:
-            return "ℹ️"
-        case .warning:
-            return "⚠️"
-        case .error:
-            return "❌"
-        case .success:
-            return "✅"
+    /// 格式化网络错误信息
+    func formatNetworkError(_ error: AFError) -> String {
+        var errorDetails = ""
+        
+        switch error {
+        case .responseValidationFailed(let reason):
+            errorDetails += "\n   验证失败: \(reason)"
+        case .responseSerializationFailed(let reason):
+            errorDetails += "\n   序列化失败: \(reason)"
+        case .requestAdaptationFailed(let error):
+            errorDetails += "\n   请求适配失败: \(error.localizedDescription)"
+        case .requestRetryFailed(let retryError, let originalError):
+            errorDetails += "\n   重试失败: \(retryError.localizedDescription)"
+            errorDetails += "\n   原始错误: \(originalError.localizedDescription)"
+        case .sessionTaskFailed(let error):
+            errorDetails += "\n   会话任务失败: \(error.localizedDescription)"
+        default:
+            break
         }
+        
+        return errorDetails
     }
 }
 
-// MARK: - 扩展支持
-extension DateFormatter {
-    static let logFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm:ss.SSS"
-        return formatter
-    }()
+// MARK: - 便捷扩展方法
+extension NetworkLogger {
+    
+    /// 记录API调用开始
+    func logAPICall(
+        _ apiName: String,
+        url: URL,
+        method: HTTPMethod,
+        parameters: Parameters? = nil
+    ) {
+        log("🚀 API调用开始: \(apiName)", level: .info)
+        logRequest(url: url, method: method, parameters: parameters, responseType: Data.self)
+    }
+    
+    /// 记录API调用成功
+    func logAPISuccess<T>(_ apiName: String, result: T) {
+        if let jsonEncodable = result as? Encodable {
+            // 如果结果可以编码为JSON，则使用JSON格式
+            do {
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = .prettyPrinted
+                let data = try encoder.encode(AnyEncodable(jsonEncodable))
+                let jsonObject = try JSONSerialization.jsonObject(with: data)
+                Logger.logJSON(jsonObject, title: "API调用成功: \(apiName)", category: .network)
+                return
+            } catch {
+                // JSON编码失败，降级到普通日志
+                Logger.warning("JSON编码失败: \(error.localizedDescription)", category: .network)
+            }
+        }
+        
+        Logger.success("API调用成功: \(apiName) - 结果: \(result)", category: .network)
+    }
+    
+    /// 记录API调用失败
+    func logAPIFailure(_ apiName: String, error: Error) {
+        logError("API调用失败: \(apiName)", error: error)
+    }
 }
 
-extension String {
-    static func * (left: String, right: Int) -> String {
-        return String(repeating: left, count: right)
+// MARK: - 辅助类型
+private struct AnyEncodable: Encodable {
+    private let encodable: Encodable
+    
+    init(_ encodable: Encodable) {
+        self.encodable = encodable
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        try encodable.encode(to: encoder)
     }
 }

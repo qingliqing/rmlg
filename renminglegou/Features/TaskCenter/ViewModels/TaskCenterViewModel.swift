@@ -35,66 +35,32 @@ class TaskCenterViewModel: ObservableObject {
     @Published var swipeTaskProgress: AdTaskProgress?
     @Published var brandTaskProgress: AdTaskProgress?
     
-    // MARK: - Ad Slot Config Properties
-    @Published var adPlatformConfig: AdCodeConfig?
-    @Published var isLoadingAdSlots = false
-    
     // MARK: - Private Properties
     private let taskService = TaskCenterService.shared
     private let loadingManager = PureLoadingManager.shared
+    private let adSlotManager = AdSlotManager.shared
     
-    private let dailyTaskType = 1
-    private let swipeTaskType = 2
-    private let brandTaskType = 3
-    
-    // 广告位缓存，按任务类型存储
-    private var adSlotCache: [Int: [String]] = [:]
+    // 使用枚举替代硬编码常量
+    private let dailyTaskType = AdSlotTaskType.dailyTask
+    private let swipeTaskType = AdSlotTaskType.browsing
+    private let brandTaskType = AdSlotTaskType.splash
     
     // MARK: - Computed Properties
     
     var dailyTask: AdTask? {
-        return adConfig?.tasks?.first { $0.id == dailyTaskType }
+        return adConfig?.tasks?.first { $0.id == dailyTaskType.rawValue }
     }
 
     var swipeTask: AdTask? {
-        return adConfig?.tasks?.first { $0.id == swipeTaskType }
+        return adConfig?.tasks?.first { $0.id == swipeTaskType.rawValue }
     }
 
     var brandTask: AdTask? {
-        return adConfig?.tasks?.first { $0.id == brandTaskType }
-    }
-    
-    // 数据加载方法调整
-    private func loadAllTaskProgress() async throws {
-        let taskTypes = [dailyTaskType, swipeTaskType, brandTaskType]
-        try await taskProgressViewModel.loadTaskProgresses(taskTypes: taskTypes)
-    }
-    
-    var canWatchDailyAd: Bool {
-        guard let task = dailyTask else { return false }
-        let currentCount = dailyTaskProgress?.currentViewCount ?? 0
-        return currentCount < task.totalAdCount && !loadingManager.isShowingLoading && !dailyVM.isShowingAd
+        return adConfig?.tasks?.first { $0.id == brandTaskType.rawValue }
     }
     
     var isHandlingAd: Bool {
         return loadingManager.isShowingLoading || dailyVM.isShowingAd
-    }
-    
-    // MARK: - Ad Slot Computed Properties
-    
-    /// 获取当前每日任务应该使用的广告位ID
-    var currentDailyAdSlotId: String? {
-        return getCurrentAdSlotId(for: dailyTaskType)
-    }
-    
-    /// 获取当前刷刷赚任务应该使用的广告位ID
-    var currentSwipeAdSlotId: String? {
-        return getCurrentAdSlotId(for: swipeTaskType)
-    }
-    
-    /// 获取当前品牌任务应该使用的广告位ID
-    var currentBrandAdSlotId: String? {
-        return getCurrentAdSlotId(for: brandTaskType)
     }
     
     // MARK: - Initialization
@@ -106,23 +72,19 @@ class TaskCenterViewModel: ObservableObject {
     // MARK: - Setup Methods
     
     private func setupSubViewModels() {
-        // 设置激励广告完成回调
+        // 设置子ViewModel的依赖
+        dailyVM.setDependencies(
+            adSlotManager: adSlotManager,
+            taskProgressViewModel: taskProgressViewModel
+        )
+        
+        // 设置完成回调
         dailyVM.onAdWatchCompleted = { [weak self] in
             await self?.handleDailyAdWatchCompleted()
         }
         
-        // 设置刷视频完成回调
         swipeVM.onAdWatchCompleted = { [weak self] in
             await self?.handleSwipeAdWatchCompleted()
-        }
-        
-        // 初始化各ViewModel的广告位（如果有缓存的话）
-        if let dailyAdSlot = currentDailyAdSlotId {
-            dailyVM.setAdSlotId(dailyAdSlot)
-        }
-        
-        if let swipeAdSlot = currentSwipeAdSlotId {
-            swipeVM.setAdSlotId(swipeAdSlot)
         }
     }
     
@@ -136,16 +98,16 @@ class TaskCenterViewModel: ObservableObject {
             async let adConfigTask: () = loadAdConfig()
             async let rewardConfigsTask: () = loadRewardConfigs()
             async let taskProgressTask: () = loadAllTaskProgress()
-            async let adPlatformConfigTask: () = loadAdPlatformConfig()
             
             do {
-                _ = try await (adConfigTask, rewardConfigsTask, taskProgressTask, adPlatformConfigTask)
+                _ = try await (adConfigTask, rewardConfigsTask, taskProgressTask)
                 isLoading = false
                 updateTaskProgress()
                 
             } catch {
                 isLoading = false
                 showErrorMessage("数据加载失败: \(error.localizedDescription)")
+                Logger.error("TaskCenter数据加载失败: \(error.localizedDescription)", category: .general)
             }
         }
     }
@@ -153,93 +115,34 @@ class TaskCenterViewModel: ObservableObject {
     private func loadAdConfig() async throws {
         let config = try await taskService.getAdConfig()
         adConfig = config
+        Logger.success("广告配置加载成功", category: .general)
     }
     
     private func loadRewardConfigs() async throws {
         let configs = try await taskService.getRewardConfigs()
         rewardConfigs = configs
+        Logger.success("奖励配置加载成功", category: .general)
     }
     
-    // MARK: - Ad Platform Config Methods
-    
-    /// 加载广告平台配置
-    private func loadAdPlatformConfig() async throws {
-        let config = try await taskService.getAdCodeList()
-        adPlatformConfig = config
+    private func loadAllTaskProgress() async throws {
+        let taskTypes = [dailyTaskType.rawValue, swipeTaskType.rawValue, brandTaskType.rawValue]
+        try await taskProgressViewModel.loadTaskProgresses(taskTypes: taskTypes)
+        Logger.success("任务进度加载成功", category: .general)
     }
     
-    /// 从广告平台配置中获取指定任务类型的广告位
-    private func getAdSlotsFromPlatformConfig(for taskType: Int) -> [String]? {
-        guard let platformConfig = adPlatformConfig else { return nil }
+    private func updateTaskProgress() {
+        dailyViewCount = taskProgressViewModel.getCurrentViewCount(for: dailyTaskType.rawValue)
+        dailyTaskProgress = taskProgressViewModel.getProgress(for: dailyTaskType.rawValue)
+        swipeTaskProgress = taskProgressViewModel.getProgress(for: swipeTaskType.rawValue)
+        brandTaskProgress = taskProgressViewModel.getProgress(for: brandTaskType.rawValue)
         
-        // 获取当前平台的任务列表
-        let currentTasks = platformConfig.currentPlatformTasks
-        
-        // 查找对应任务类型的广告位
-        if let task = currentTasks.first(where: { $0.currentTaskId == taskType }) {
-            return task.currentAdSlotIds
-        }
-        
-        return nil
+        Logger.debug("任务进度更新 - 每日:\(dailyViewCount), 刷刷赚:\(swipeTaskProgress?.currentViewCount ?? 0)", category: .general)
     }
     
-    /// 根据已观看数量获取当前应该使用的广告位ID
-    private func getCurrentAdSlotId(for taskType: Int) -> String? {
-        guard let adSlots = adSlotCache[taskType], !adSlots.isEmpty else {
-            return nil
-        }
-        
-        let currentCount = getCurrentViewCount(for: taskType)
-        
-        // 使用模运算实现循环选择广告位
-        let adSlotIndex = currentCount % adSlots.count
-        let selectedAdSlot = adSlots[adSlotIndex]
-        
-        print("📍 任务类型 \(taskType): 已观看 \(currentCount) 次，选择广告位[\(adSlotIndex)]: \(selectedAdSlot)")
-        
-        return selectedAdSlot
-    }
-    
-    /// 获取指定任务类型的当前观看次数
-    private func getCurrentViewCount(for taskType: Int) -> Int {
-        switch taskType {
-        case dailyTaskType:
-            return dailyTaskProgress?.currentViewCount ?? 0
-        case swipeTaskType:
-            return swipeTaskProgress?.currentViewCount ?? 0
-        case brandTaskType:
-            return brandTaskProgress?.currentViewCount ?? 0
-        default:
-            return 0
-        }
-    }
-    
-    /// 获取指定任务类型的下一个广告位ID（预加载用）
-    func getNextAdSlotId(for taskType: Int) -> String? {
-        guard let adSlots = adSlotCache[taskType], !adSlots.isEmpty else {
-            return nil
-        }
-        
-        let nextCount = getCurrentViewCount(for: taskType) + 1
-        let nextAdSlotIndex = nextCount % adSlots.count
-        return adSlots[nextAdSlotIndex]
-    }
-    
-    /// 获取指定任务类型的所有广告位列表
-    func getAllAdSlots(for taskType: Int) -> [String] {
-        return adSlotCache[taskType] ?? []
-    }
-    
-    // MARK: - Daily Task Methods
+    // MARK: - Daily Task Methods (简化为直接调用)
     
     func watchDailyTaskAd() {
-        // 在观看广告前，确保设置了正确的广告位ID
-        if let adSlotId = currentDailyAdSlotId {
-            print("🎯 开始观看每日任务广告，广告位ID: \(adSlotId)")
-            // 这里可以将广告位ID传递给广告SDK
-            dailyVM.setAdSlotId(adSlotId)
-        }
-        
+        // 直接调用子ViewModel的方法，让它自己处理所有逻辑
         dailyVM.watchRewardAd()
     }
     
@@ -247,82 +150,61 @@ class TaskCenterViewModel: ObservableObject {
         do {
             loadingManager.showLoading(style: .pulse)
             
-            // 刷新进度并领取奖励
-            try await taskProgressViewModel.refreshTaskProgress(taskType: dailyTaskType)
-            
+            // 刷新进度
+            try await taskProgressViewModel.refreshTaskProgress(taskType: dailyTaskType.rawValue)
             updateTaskProgress()
             
-            // 3. 预加载下一次的广告位（可选）
-            if let nextAdSlotId = getNextAdSlotId(for: dailyTaskType) {
-                print("🔄 预加载下一个每日任务广告位: \(nextAdSlotId)")
-                // 这里可以预加载下一个广告位
-            }
-            
             loadingManager.showSuccess(message: "广告观看完成，积分已发放！")
+            Logger.success("每日任务广告观看完成", category: .adSlot)
             
         } catch {
             loadingManager.showError(message: "处理广告完成失败")
+            Logger.error("处理每日广告完成失败: \(error.localizedDescription)", category: .adSlot)
         }
     }
     
-    private func updateTaskProgress() {
-        dailyViewCount = taskProgressViewModel.getCurrentViewCount(for: dailyTaskType)
-        dailyTaskProgress = taskProgressViewModel.getProgress(for: dailyTaskType)
-        swipeTaskProgress = taskProgressViewModel.getProgress(for: swipeTaskType)
-        brandTaskProgress = taskProgressViewModel.getProgress(for: brandTaskType)
-    }
+    // MARK: - Swipe Task Methods (保持原有逻辑)
     
-    // MARK: - Swipe Task Methods
-    
-    /// 观看刷刷赚广告
     func watchSwipeTaskAd() {
-        // 在观看广告前，确保设置了正确的广告位ID
-        if let adSlotId = currentSwipeAdSlotId {
-            print("🎯 开始观看刷刷赚广告，广告位ID: \(adSlotId)")
-            // 设置广告位ID到刷刷赚ViewModel
-            swipeVM.setAdSlotId(adSlotId)
-            
-            // 预加载下一个广告位（提前准备）
-            if let nextAdSlotId = getNextAdSlotId(for: swipeTaskType) {
-                print("🚀 预加载下一个刷刷赚广告位: \(nextAdSlotId)")
-                swipeVM.preloadAd(for: nextAdSlotId)
-            }
-        } else {
-            print("⚠️ 未找到可用的刷刷赚广告位")
-            showErrorMessage("暂无可用的广告位，请稍后重试")
+        guard adSlotManager.isInitialized else {
+            showErrorMessage("广告位尚未初始化，请稍后重试")
+            Logger.warning("广告位管理器未初始化，无法观看刷刷赚广告", category: .adSlot)
             return
+        }
+        
+        let currentCount = swipeTaskProgress?.currentViewCount ?? 0
+        guard let adSlotId = adSlotManager.getCurrentSwipeAdSlotId(currentViewCount: currentCount) else {
+            showErrorMessage("暂无可用的广告位，请稍后重试")
+            Logger.warning("未找到可用的刷刷赚广告位", category: .adSlot)
+            return
+        }
+        
+        Logger.adSlot("开始观看刷刷赚广告，广告位ID: \(adSlotId)")
+        swipeVM.setAdSlotId(adSlotId)
+        
+        // 预加载下一个广告位
+        if let nextAdSlotId = adSlotManager.getNextSwipeAdSlotId(currentViewCount: currentCount) {
+            Logger.info("预加载下一个刷刷赚广告位: \(nextAdSlotId)", category: .adSlot)
+            swipeVM.preloadAd(for: nextAdSlotId)
         }
         
         swipeVM.watchRewardAd()
     }
     
-    /// 刷刷赚广告完成
     private func handleSwipeAdWatchCompleted() async {
         do {
             loadingManager.showLoading(style: .pulse)
             
-            // 刷新进度并领取奖励
-            try await taskProgressViewModel.refreshTaskProgress(taskType: swipeTaskType)
-            
+            try await taskProgressViewModel.refreshTaskProgress(taskType: swipeTaskType.rawValue)
             updateTaskProgress()
             
-            // 3. 预加载下一次的广告位（可选）
-            if let nextAdSlotId = getNextAdSlotId(for: swipeTaskType) {
-                print("🔄 预加载下一个刷刷赚广告位: \(nextAdSlotId)")
-                // 这里可以预加载下一个广告位
-            }
-            
             loadingManager.showSuccess(message: "广告观看完成，积分已发放！")
+            Logger.success("刷刷赚广告观看完成", category: .adSlot)
             
         } catch {
             loadingManager.showError(message: "处理广告完成失败")
+            Logger.error("处理刷刷赚广告完成失败: \(error.localizedDescription)", category: .adSlot)
         }
-    }
-    
-    // MARK: - Brand Task Methods
-    
-    func handleBrandTaskResult() {
-        
     }
     
     // MARK: - Helper Methods
@@ -336,8 +218,36 @@ class TaskCenterViewModel: ObservableObject {
         successMessage = message
         showSuccessAlert = true
     }
+    
+    // MARK: - Status Methods
+    
+    func getAdSlotStatus() -> String {
+        guard adSlotManager.isInitialized else {
+            return "广告位管理器未初始化"
+        }
+        
+        let status = adSlotManager.getCacheStatus()
+        return """
+        广告位状态: \(status.isValid ? "有效" : "无效")
+        总广告位数: \(status.totalSlots)
+        更新时间: \(status.lastUpdate?.description ?? "无")
+        每日任务冷却: \(dailyVM.cooldownRemaining)秒
+        """
+    }
+    
+    func refreshAdSlotData() {
+        Task {
+            Logger.info("手动刷新广告位数据", category: .adSlot)
+            await adSlotManager.refreshAdSlotData()
+        }
+    }
+    
+    var isAdSlotManagerReady: Bool {
+        return adSlotManager.isInitialized
+    }
 }
 
+// MARK: - TaskTab Enum (保持不变)
 enum TaskTab: CaseIterable {
     case daily
     case swipe

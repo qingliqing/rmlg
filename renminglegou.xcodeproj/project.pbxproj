@@ -69,15 +69,11 @@
 		};
 		284375112E4A150200A1CCCD /* renminglegouTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = renminglegouTests;
 			sourceTree = "<group>";
 		};
 		2843751B2E4A150200A1CCCD /* renminglegouUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = renminglegouUITests;
 			sourceTree = "<group>";
 		};

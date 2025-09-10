@@ -15,20 +15,10 @@ import SwiftUI
 @available(iOS 16.0, *)
 struct RootView: View {
     @EnvironmentObject private var router: Router
-    @EnvironmentObject private var adSDKManager: AdSDKManager
     
     var body: some View {
         ZStack {
-            // 1️⃣ SDK 初始化未完成，显示白屏
-            if !adSDKManager.isInitialized {
-                Color.white
-                    .ignoresSafeArea()
-            }
-            
-            // 2️⃣ SDK 初始化完成，显示启动页或其他逻辑
-            else {
-                SplashView()
-            }
+            SplashView()
         }
     }
     
