@@ -83,7 +83,7 @@ final class BannerAdManager: NSObject, ObservableObject, @unchecked Sendable {
         
         // 创建广告位配置
         let slot = BUAdSlot()
-        slot.id = slotId
+        slot.id = AdSlotManager.shared.getCurrentBannerAdSlotId() ?? slotId
         
         // 创建Banner广告视图
         let bannerView = BUNativeExpressBannerView(

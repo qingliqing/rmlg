@@ -218,12 +218,11 @@ final class SwipeTaskViewModel: ObservableObject {
         }
         
         startAdLoading()
-        rewardAdManager.setEventHandler(for: slotID) { [weak self] event in
+        rewardAdManager.showAd(for: slotID, from: viewController) {[weak self] event in
             Task { @MainActor in
                 self?.handleRewardAdEvent(event, for: slotID)
             }
         }
-        rewardAdManager.showAd(for: slotID, from: viewController)
     }
     
     // MARK: - Event Handler

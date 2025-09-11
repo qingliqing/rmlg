@@ -62,7 +62,7 @@ class RewardAdManager {
     /// - Parameter slotID: 广告位ID
     private func removeManager(for slotID: String) {
         queue.sync(flags: .barrier) {
-            if let removedManager = adManagers.removeValue(forKey: slotID) {
+            if adManagers.removeValue(forKey: slotID) != nil {
                 Logger.info("🗑️ 自动移除广告管理器 - 广告位: \(slotID)")
                 Logger.info("📊 当前管理器数量: \(adManagers.count)")
                 

@@ -33,7 +33,7 @@ class AdSlotManager: ObservableObject {
     // 缓存key
     private let cacheKey = "ad_slot_cache"
     private let lastUpdateKey = "ad_slot_last_update"
-    private let cacheValidityHours = 24 // 缓存有效期24小时
+    private let cacheValidityHours = 0 // 缓存有效期24小时
     
     // MARK: - Initialization
     private init() {
