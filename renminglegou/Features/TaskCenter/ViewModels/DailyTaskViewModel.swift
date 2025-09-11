@@ -16,48 +16,46 @@ final class DailyTaskViewModel: ObservableObject {
     @Published var isShowingAd = false
     @Published var cooldownRemaining: Int = 0  // 冷却剩余时间
     
+    // MARK: - Task Progress Properties - 独立管理进度
+    @Published var currentViewCount: Int = 0
+    @Published var taskProgress: AdTaskProgress?
+    
     // MARK: - Private Properties
     private let rewardAdManager = RewardAdManager.shared
     private let loadingManager = PureLoadingManager.shared
     private let userDefaults = UserDefaults.standard
     
-    // 依赖注入
+    // 依赖注入 - 移除TaskProgressViewModel依赖
     private weak var adSlotManager: AdSlotManager?
-    private weak var taskProgressViewModel: TaskProgressViewModel?
+    private weak var taskService: TaskCenterService? = TaskCenterService.shared
+    
+    // 奖励配置
+    private var rewardConfigs: [AdRewardConfig] = []
     
     // 广告位配置
-    private var currentSlotID: String
     private let defaultSlotID = "103510224" // 默认广告位ID作为备选
+    private let taskType = AdSlotTaskType.dailyTask
     
     // 冷却时间配置
     private var watchIntervalSeconds: Int = 0
     private let lastWatchTimeKey = "last_watch_daily_task"
     
     // 定时器
-    private var adLoadingTimer: Timer?
     private var cooldownTimer: Timer?
     private let adLoadingTimeoutDuration: TimeInterval = 10.0
     
-    // MARK: - Callbacks
-    var onAdWatchCompleted: (() async -> Void)?
-    
     // MARK: - Computed Properties
     
-    /// 当前任务进度观看次数
-    var currentViewCount: Int {
-        return taskProgressViewModel?.getCurrentViewCount(for: AdSlotTaskType.dailyTask.rawValue) ?? 0
-    }
-    
     /// 当前应该使用的广告位ID
-    var currentAdSlotId: String? {
-        return adSlotManager?.getCurrentDailyAdSlotId(currentViewCount: currentViewCount)
+    var currentSlotID: String {
+        return adSlotManager?.getCurrentDailyAdSlotId(currentViewCount: currentViewCount) ?? defaultSlotID
     }
     
     /// 是否可以观看广告（综合判断）
     var canWatchAd: Bool {
         return cooldownRemaining == 0 &&
                !isShowingAd &&
-               (adSlotManager?.hasAvailableAdSlots(for: .dailyTask) ?? false)
+               (adSlotManager?.hasAvailableAdSlots(for: taskType) ?? false)
     }
     
     /// 按钮显示文案
@@ -76,48 +74,42 @@ final class DailyTaskViewModel: ObservableObject {
         return canWatchAd
     }
     
+    /// 检查当前广告位是否已加载
+    var isAdReady: Bool {
+        return rewardAdManager.isAdReady(for: currentSlotID)
+    }
+    
     // MARK: - Initialization
-    init(slotID: String? = nil) {
-        self.currentSlotID = slotID ?? defaultSlotID
-        setupRewardAdManager()
+    init() {
+        preloadAd()
         initializeCooldownState()
     }
     
     // MARK: - Public Configuration Methods
     
-    /// 设置依赖
-    func setDependencies(adSlotManager: AdSlotManager, taskProgressViewModel: TaskProgressViewModel) {
+    /// 设置依赖 - 移除TaskProgressViewModel
+    func setDependencies(adSlotManager: AdSlotManager, taskService: TaskCenterService) {
         self.adSlotManager = adSlotManager
-        self.taskProgressViewModel = taskProgressViewModel
+        self.taskService = taskService
         
         // 从 AdSlotManager 获取观看间隔配置
-        self.watchIntervalSeconds = adSlotManager.getWatchInterval(for: .dailyTask)
+        self.watchIntervalSeconds = adSlotManager.getWatchInterval(for: taskType)
+        
+        // 立即加载任务进度
+        loadTaskProgress()
+        
         updateCooldownTime()
         ensureCooldownTimerRunning()
         
         Logger.info("设置 DailyTaskViewModel 依赖，观看间隔: \(watchIntervalSeconds)秒", category: .adSlot)
     }
     
+    /// 更新奖励配置
+    func updateRewardConfigs(_ configs: [AdRewardConfig]) {
+        self.rewardConfigs = configs
+    }
+    
     // MARK: - Public Methods
-    
-    /// 设置广告位ID（保留，用于手动设置）
-    func setAdSlotId(_ slotID: String) {
-        guard !slotID.isEmpty else {
-            print("广告位ID为空，使用默认广告位: \(defaultSlotID)")
-            return
-        }
-        
-        let oldSlotID = currentSlotID
-        currentSlotID = slotID
-        
-        print("广告位切换: \(oldSlotID) -> \(currentSlotID)")
-        setupRewardAdManager()
-    }
-    
-    /// 获取当前广告位ID
-    var getCurrentSlotID: String {
-        return currentSlotID
-    }
     
     /// 观看激励广告
     func watchRewardAd() {
@@ -133,24 +125,71 @@ final class DailyTaskViewModel: ObservableObject {
             return
         }
         
-        // 获取当前应该使用的广告位ID
-        guard let adSlotId = currentAdSlotId else {
-            loadingManager.showError(message: "获取广告位失败，请稍后重试")
-            return
-        }
-        
-        // 更新当前使用的广告位ID并设置
-        currentSlotID = adSlotId
-        setupRewardAdManager()
-        
-        print("开始观看广告，广告位ID: \(currentSlotID)")
+        Logger.info("开始观看广告，广告位ID: \(currentSlotID)", category: .adSlot)
         startAdLoading()
         showRewardAd()
     }
     
-    /// 检查当前广告位是否已加载
-    var isAdReady: Bool {
-        return rewardAdManager.isAdReady(for: currentSlotID)
+    /// 获取下一次观看的奖励信息
+    func getNextRewardInfo() -> AdRewardConfig? {
+        return rewardConfigs.first { config in
+            config.adCountStart == (currentViewCount + 1)
+        }
+    }
+    
+    // MARK: - Private Task Progress Methods - 独立管理进度
+    
+    /// 加载任务进度
+    private func loadTaskProgress() {
+        Task {
+            do {
+                guard let taskService = taskService else { return }
+                let progress = try await taskService.receiveTask(taskType: taskType.rawValue)
+                
+                await MainActor.run {
+                    self.taskProgress = progress
+                    self.currentViewCount = progress.currentViewCount
+                    Logger.success("每日任务进度加载成功: \(self.currentViewCount)", category: .adSlot)
+                }
+            } catch {
+                Logger.error("加载每日任务进度失败: \(error.localizedDescription)", category: .adSlot)
+            }
+        }
+    }
+    
+    /// 刷新任务进度
+    private func refreshTaskProgress() async throws {
+        guard let taskService = taskService else { return }
+        
+        let progress = try await taskService.receiveTask(taskType: taskType.rawValue)
+        self.taskProgress = progress
+        self.currentViewCount = progress.currentViewCount
+        
+        Logger.success("每日任务进度刷新成功: \(self.currentViewCount)", category: .adSlot)
+    }
+    
+    // MARK: - Private Methods - 完整的观看完成处理
+    
+    /// 完全独立处理观看完成逻辑
+    private func handleAdWatchCompleted() async {
+        do {
+            loadingManager.showLoading(style: .pulse)
+            
+            // 1. 记录观看时间（开始冷却）
+            recordWatchTime()
+            
+            // 2. 刷新任务进度
+            try await refreshTaskProgress()
+            
+            Logger.success("每日任务广告观看完成", category: .adSlot)
+            
+            // 3.预加载下一个广告
+            preloadAd()
+            
+        } catch {
+            loadingManager.showError(message: "处理广告完成失败")
+            Logger.error("处理每日广告完成失败: \(error.localizedDescription)", category: .adSlot)
+        }
     }
     
     // MARK: - Private Cooldown Methods
@@ -235,114 +274,86 @@ final class DailyTaskViewModel: ObservableObject {
         Logger.info("记录每日任务观看时间，冷却剩余: \(cooldownRemaining)秒", category: .adSlot)
     }
     
-    // MARK: - Private Methods
+    // MARK: - Private Ad Methods
     
-    private func setupRewardAdManager() {
-        // 为当前广告位设置事件处理器
-        rewardAdManager.setEventHandler(for: currentSlotID) { [weak self] event in
-            Task { @MainActor in
-                self?.handleRewardAdEvent(event)
-            }
-        }
-        
+    private func preloadAd() {
         // 预加载当前广告位
         rewardAdManager.preloadAd(for: currentSlotID)
     }
     
     private func startAdLoading() {
         loadingManager.showLoading(style: .circle)
-        
-        adLoadingTimer = Timer.scheduledTimer(withTimeInterval: adLoadingTimeoutDuration, repeats: false) { [weak self] _ in
-            Task { @MainActor in
-                self?.handleAdLoadingTimeout()
-            }
-        }
     }
     
     private func stopAdLoading() {
         loadingManager.hideLoading()
-        adLoadingTimer?.invalidate()
-        adLoadingTimer = nil
-    }
-    
-    private func handleAdLoadingTimeout() {
-        stopAdLoading()
-        loadingManager.showError(message: "广告加载超时，请稍后重试")
-        
-        // 广告加载超时时，尝试使用默认广告位
-        if currentSlotID != defaultSlotID {
-            print("当前广告位超时，尝试使用默认广告位")
-            setAdSlotId(defaultSlotID)
-        }
     }
     
     private func showRewardAd() {
-        guard let windowScene = UIApplication.shared.connectedScenes
-            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-              let window = windowScene.windows.first(where: \.isKeyWindow),
-              let viewController = window.rootViewController?.topMostViewController() else {
+        guard let viewController = UIUtils.findViewController() else {
             stopAdLoading()
             loadingManager.showError(message: "无法获取视图控制器")
             return
         }
         
-        rewardAdManager.showAd(for: currentSlotID, from: viewController)
+        rewardAdManager.showAd(for: currentSlotID, from: viewController) { event in
+            Task { @MainActor in
+                self.handleRewardAdEvent(event)
+            }
+        }
     }
     
     // MARK: - Event Handler
     
     private func handleRewardAdEvent(_ event: RewardAdEvent) {
-        print("广告事件: \(event), 广告位: \(currentSlotID)")
+        Logger.info("广告事件: \(event), 广告位: \(currentSlotID)", category: .adSlot)
         
         switch event {
         case .loadSuccess:
-            print("广告加载成功: \(currentSlotID)")
+            Logger.info("广告加载成功: \(currentSlotID)", category: .adSlot)
             
         case .loadFailed(let error):
-            print("广告加载失败: \(error), 广告位: \(currentSlotID)")
+            Logger.error("广告加载失败: \(error), 广告位: \(currentSlotID)", category: .adSlot)
             stopAdLoading()
             loadingManager.showError(message: "广告加载失败")
             
         case .showSuccess:
-            print("广告展示成功: \(currentSlotID)")
+            Logger.info("广告展示成功: \(currentSlotID)", category: .adSlot)
             stopAdLoading()
             isShowingAd = true
             
         case .showFailed(let error):
-            print("广告展示失败: \(error), 广告位: \(currentSlotID)")
+            Logger.error("广告展示失败: \(error), 广告位: \(currentSlotID)", category: .adSlot)
             stopAdLoading()
             isShowingAd = false
             loadingManager.showError(message: "广告展示失败")
             
         case .clicked:
-            print("用户点击广告: \(currentSlotID)")
+            Logger.info("用户点击广告: \(currentSlotID)", category: .adSlot)
             
         case .closed:
-            print("广告关闭: \(currentSlotID)")
+            Logger.info("广告关闭: \(currentSlotID)", category: .adSlot)
             isShowingAd = false
             
         case .rewardSuccess(let verified):
-            print("广告奖励成功: \(verified), 广告位: \(currentSlotID)")
+            Logger.info("广告奖励成功: \(verified), 广告位: \(currentSlotID)", category: .adSlot)
             isShowingAd = false
             if verified {
-                // 记录观看时间（开始冷却）
-                recordWatchTime()
-                
                 Task {
-                    await onAdWatchCompleted?()
+                    await handleAdWatchCompleted()
                 }
             } else {
-                print("广告奖励验证失败: \(currentSlotID)")
+                Logger.warning("广告奖励验证失败: \(currentSlotID)", category: .adSlot)
                 loadingManager.showError(message: "广告奖励验证失败")
             }
             
         case .rewardFailed(let error):
-            print("广告奖励发放失败: \(String(describing: error)), 广告位: \(currentSlotID)")
+            Logger.error("广告奖励发放失败: \(String(describing: error)), 广告位: \(currentSlotID)", category: .adSlot)
             isShowingAd = false
             loadingManager.showError(message: "广告奖励发放失败")
             
         case .playFailed(let error):
-            print("广告播放失败: \(error), 广告位: \(currentSlotID)")
+            Logger.error("广告播放失败: \(error), 广告位: \(currentSlotID)", category: .adSlot)
             isShowingAd = false
             loadingManager.showError(message: "广告播放失败")
             
@@ -353,9 +364,8 @@ final class DailyTaskViewModel: ObservableObject {
     
     // MARK: - Deinitializer
     deinit {
-        adLoadingTimer?.invalidate()
         cooldownTimer?.invalidate()
-        print("DailyTaskViewModel 销毁，广告位: \(currentSlotID)")
+        Logger.info("DailyTaskViewModel 销毁", category: .adSlot)
     }
 }
 

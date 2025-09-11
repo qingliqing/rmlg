@@ -15,7 +15,6 @@ enum AdTaskType: Int, CaseIterable {
     case swipeTask = 2      // 刷刷赚
     case brandTask = 3      // 品牌任务
     
-    
     var displayName: String {
         switch self {
         case .dailyTask: return "每日任务"
@@ -30,27 +29,18 @@ class TaskCenterViewModel: ObservableObject {
     
     // MARK: - Published Properties
     @Published var isLoading = false
-    
-    // MARK: - Sub ViewModels
-    let bannerAdViewModel = BannerAdViewModel()
-    let taskProgressViewModel = TaskProgressViewModel()
-    let dailyVM = DailyTaskViewModel()
-    let swipeVM = SwipeTaskViewModel()
-    
-    // MARK: - Task Config Properties
     @Published var adConfig: AdConfig?
     @Published var rewardConfigs: [AdRewardConfig] = []
-    @Published var isSubmittingBrandTask = false
     
-    @Published var dailyViewCount: Int = 0
-    @Published var dailyTaskProgress: AdTaskProgress?
-    @Published var swipeTaskProgress: AdTaskProgress?
-    @Published var brandTaskProgress: AdTaskProgress?
+    // MARK: - Sub ViewModels
+    let dailyVM = DailyTaskViewModel()
+    let swipeVM = SwipeTaskViewModel()
     
     // MARK: - Private Properties
     private let taskService = TaskCenterService.shared
     private let loadingManager = PureLoadingManager.shared
     private let adSlotManager = AdSlotManager.shared
+    private var cancellables = Set<AnyCancellable>()
     
     // 使用枚举替代硬编码常量
     private let dailyTaskType = AdTaskType.dailyTask
@@ -58,15 +48,14 @@ class TaskCenterViewModel: ObservableObject {
     private let brandTaskType = AdTaskType.brandTask
     
     // MARK: - Computed Properties
-    
     var dailyTask: AdTask? {
         return adConfig?.tasks?.first { $0.id == dailyTaskType.rawValue }
     }
-
+    
     var swipeTask: AdTask? {
         return adConfig?.tasks?.first { $0.id == swipeTaskType.rawValue }
     }
-
+    
     var brandTask: AdTask? {
         return adConfig?.tasks?.first { $0.id == brandTaskType.rawValue }
     }
@@ -78,44 +67,47 @@ class TaskCenterViewModel: ObservableObject {
     }
     
     // MARK: - Setup Methods
-    
     private func setupSubViewModels() {
         // 设置子ViewModel的依赖
         dailyVM.setDependencies(
             adSlotManager: adSlotManager,
-            taskProgressViewModel: taskProgressViewModel
+            taskService: taskService
         )
         
-        // 设置完成回调
-        dailyVM.onAdWatchCompleted = { [weak self] in
-            await self?.handleDailyAdWatchCompleted()
-        }
+        // 监听配置变化，重新设置子VM的任务配置
+        $adConfig
+            .compactMap { $0 }
+            .sink { [weak self] config in
+                self?.updateSubViewModelsConfig(with: config)
+            }
+            .store(in: &cancellables)
         
-        swipeVM.setDependencies(
-            adSlotManager: adSlotManager,
-            taskProgressViewModel: taskProgressViewModel,
-            swipeTask: swipeTask
-        )
-        
-        swipeVM.onAdWatchCompleted = { [weak self] in
-            await self?.handleSwipeAdWatchCompleted()
-        }
+        //        // 分发奖励配置
+        $rewardConfigs
+            .sink { [weak self] configs in
+                self?.dailyVM.updateRewardConfigs(configs)
+                self?.swipeVM.updateRewardConfigs(configs)
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func updateSubViewModelsConfig(with config: AdConfig) {
+        // 更新刷刷赚任务配置
+        let swipeTask = config.tasks?.first { $0.id == swipeTaskType.rawValue }
+        swipeVM.updateTask(swipeTask)
     }
     
     // MARK: - Data Loading Methods
-    
     func loadData() {
         Task {
             isLoading = true
             
             async let adConfigTask: () = loadAdConfig()
             async let rewardConfigsTask: () = loadRewardConfigs()
-            async let taskProgressTask: () = loadAllTaskProgress()
             
             do {
-                _ = try await (adConfigTask, rewardConfigsTask, taskProgressTask)
+                _ = try await (adConfigTask, rewardConfigsTask)
                 isLoading = false
-                updateTaskProgress()
                 
             } catch {
                 isLoading = false
@@ -134,72 +126,6 @@ class TaskCenterViewModel: ObservableObject {
         let configs = try await taskService.getRewardConfigs()
         rewardConfigs = configs
         Logger.success("奖励配置加载成功", category: .general)
-    }
-    
-    private func loadAllTaskProgress() async throws {
-        let taskTypes = [dailyTaskType.rawValue, swipeTaskType.rawValue, brandTaskType.rawValue]
-        try await taskProgressViewModel.loadTaskProgresses(taskTypes: taskTypes)
-        Logger.success("任务进度加载成功", category: .general)
-    }
-    
-    private func updateTaskProgress() {
-        dailyViewCount = taskProgressViewModel.getCurrentViewCount(for: dailyTaskType.rawValue)
-        dailyTaskProgress = taskProgressViewModel.getProgress(for: dailyTaskType.rawValue)
-        swipeTaskProgress = taskProgressViewModel.getProgress(for: swipeTaskType.rawValue)
-        brandTaskProgress = taskProgressViewModel.getProgress(for: brandTaskType.rawValue)
-        
-        Logger.debug("任务进度更新 - 每日:\(dailyViewCount), 刷刷赚:\(swipeTaskProgress?.currentViewCount ?? 0)", category: .general)
-    }
-    
-    // MARK: - RewardAD Method
-    /// 获取下一次观看的奖励信息
-    func getNextRewardInfo(for taskType: AdTaskType) -> AdRewardConfig? {
-        let currentCount = getCurrentCount(for: taskType)
-        return rewardConfigs.first { config in
-            config.adCountStart == (currentCount + 1)
-        }
-    }
-    
-    private func getCurrentCount(for taskType: AdTaskType) -> Int {
-        switch taskType {
-        case .dailyTask: return dailyViewCount
-        case .swipeTask: return swipeTaskProgress?.currentViewCount ?? 0
-        case .brandTask: return brandTaskProgress?.currentViewCount ?? 0
-        }
-    }
-    
-    private func handleDailyAdWatchCompleted() async {
-        do {
-            loadingManager.showLoading(style: .pulse)
-            
-            // 刷新进度
-            try await taskProgressViewModel.refreshTaskProgress(taskType: dailyTaskType.rawValue)
-            updateTaskProgress()
-            
-            loadingManager.showSuccess(message: "广告观看完成，积分已发放！")
-            Logger.success("每日任务广告观看完成", category: .adSlot)
-            
-        } catch {
-            loadingManager.showError(message: "处理广告完成失败")
-            Logger.error("处理每日广告完成失败: \(error.localizedDescription)", category: .adSlot)
-        }
-    }
-    
-    // MARK: - Swipe Task Methods
-    private func handleSwipeAdWatchCompleted() async {
-        do {
-            loadingManager.showLoading(style: .pulse)
-            
-            try await taskProgressViewModel.refreshTaskProgress(taskType: swipeTaskType.rawValue)
-            updateTaskProgress()
-            
-            loadingManager.showSuccess(message: "广告观看完成，积分已发放！")
-            Logger.success("刷刷赚广告观看完成", category: .adSlot)
-            
-        } catch {
-            loadingManager.showError(message: "处理广告完成失败")
-            Logger.error("处理刷刷赚广告完成失败: \(error.localizedDescription)", category: .adSlot)
-        }
     }
 }
 

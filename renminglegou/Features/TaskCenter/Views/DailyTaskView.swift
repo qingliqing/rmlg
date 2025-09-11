@@ -39,7 +39,7 @@ struct DailyTaskView: View {
                         ZStack (alignment: .top){
                             // 根据任务完成状态显示不同图片
                             Group {
-                                let currentCount = viewModel.dailyViewCount
+                                let currentCount = dailyVM.currentViewCount
                                 
                                 if index < currentCount {
                                     // 可观看状态
@@ -78,7 +78,7 @@ struct DailyTaskView: View {
                 // 完成按钮
                 Button(action: {
                     // 直接调用 dailyVM 的方法（会自动检查冷却时间）
-                    viewModel.dailyVM.watchRewardAd()
+                    dailyVM.watchRewardAd()
                 }) {
                     ZStack {
                         // 背景图片

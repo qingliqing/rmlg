@@ -15,23 +15,29 @@ final class SwipeTaskViewModel: ObservableObject {
     // MARK: - Published Properties
     @Published var isShowingAd = false
     @Published var isTaskCompleted = false
-    @Published var currentProgress = 0
     @Published var canStartTask = true
+    
+    // MARK: - Task Progress Properties - 独立管理进度
+    @Published var currentViewCount: Int = 0
+    @Published var currentProgress: Int = 0
+    @Published var taskProgress: AdTaskProgress?
     
     // MARK: - Private Properties
     private let rewardAdManager = RewardAdManager.shared
     private let loadingManager = PureLoadingManager.shared
     private let userDefaults = UserDefaults.standard
     
-    // 依赖注入
-    private weak var adSlotManager: AdSlotManager?
-    private weak var taskProgressViewModel: TaskProgressViewModel?
+    // 依赖注入 - 移除TaskProgressViewModel依赖
+    private var adSlotManager: AdSlotManager = AdSlotManager.shared
+    private var taskService: TaskCenterService = TaskCenterService.shared
+    
+    // 任务配置
+    private var task: AdTask?
+    private var rewardConfigs: [AdRewardConfig] = []
     
     // 广告位配置
     private let defaultSlotID = "103510179" // 默认广告位ID作为备选
-    
-    // 任务配置
-    private var swipeTask: AdTask?
+    private let taskType = AdTaskType.swipeTask
     
     // 冷却时间配置
     private var watchIntervalSeconds: Int = 0
@@ -41,26 +47,17 @@ final class SwipeTaskViewModel: ObservableObject {
     private var adLoadingTimer: Timer?
     private let adLoadingTimeoutDuration: TimeInterval = 10.0
     
-    // MARK: - Callbacks
-    var onAdWatchCompleted: (() async -> Void)?
-    
     // MARK: - Computed Properties
-    
-    /// 当前任务进度观看次数
-    var currentViewCount: Int {
-        return taskProgressViewModel?.getCurrentViewCount(for: AdTaskType.swipeTask.rawValue) ?? 0
-    }
-    
     /// 当前应该使用的广告位ID
     var currentAdSlotId: String {
-        return adSlotManager?.getCurrentSwipeAdSlotId(currentViewCount: currentViewCount) ?? defaultSlotID
+        return adSlotManager.getCurrentSwipeAdSlotId(currentViewCount: currentViewCount) ?? defaultSlotID
     }
     
     /// 是否可以观看广告（综合判断）
     var canWatchAd: Bool {
         return !isShowingAd &&
                !isTaskCompleted &&
-                (adSlotManager?.hasAvailableAdSlots(for: .swipeTask) ?? false)
+                (adSlotManager.hasAvailableAdSlots(for: AdSlotTaskType.swipeTask))
     }
     
     /// 按钮是否可点击
@@ -68,28 +65,31 @@ final class SwipeTaskViewModel: ObservableObject {
         return canStartTask && !isTaskCompleted
     }
     
+    /// 检查当前广告位是否已加载
+    var isAdReady: Bool {
+        return rewardAdManager.isAdReady(for: currentAdSlotId)
+    }
+    
     // MARK: - Initialization
     init() {
-        // 简化初始化，不需要预设广告位
+        // 从 AdSlotManager 获取观看间隔配置
+        self.watchIntervalSeconds = adSlotManager.getWatchInterval(for: AdSlotTaskType.swipeTask)
+        
+        // 立即加载任务进度（进度加载成功后会自动预加载广告）
+        loadTaskProgress()
     }
     
     // MARK: - Public Configuration Methods
     
-    /// 设置依赖
-    func setDependencies(
-        adSlotManager: AdSlotManager,
-        taskProgressViewModel: TaskProgressViewModel,
-        swipeTask: AdTask?
-    ) {
-        self.adSlotManager = adSlotManager
-        self.taskProgressViewModel = taskProgressViewModel
-        self.swipeTask = swipeTask
-        
-        // 从 AdSlotManager 获取观看间隔配置
-        self.watchIntervalSeconds = adSlotManager.getWatchInterval(for: .swipeTask)
+    /// 更新任务配置
+    func updateTask(_ task: AdTask?) {
+        self.task = task
         updateTaskState()
-        
-        Logger.info("设置 SwipeTaskViewModel 依赖，观看间隔: \(watchIntervalSeconds)秒", category: .adSlot)
+    }
+    
+    /// 更新奖励配置
+    func updateRewardConfigs(_ configs: [AdRewardConfig]) {
+        self.rewardConfigs = configs
     }
     
     // MARK: - Public Business Methods
@@ -98,14 +98,14 @@ final class SwipeTaskViewModel: ObservableObject {
         // 检查冷却时间
         let remainingCooldown = getRemainingCooldownTime()
         guard remainingCooldown == 0 else {
-            loadingManager.showAlert(message: "请等待\(remainingCooldown)秒后再观看",position: .center)
+            loadingManager.showAlert(message: "请等待\(remainingCooldown)秒后再观看", position: .center)
             return false
         }
         return true
     }
     
     /// 开始刷视频任务
-    func startSwipeTask(rewardConfig: AdRewardConfig?) {
+    func startSwipeTask() {
         guard canStartTask else {
             loadingManager.showError(message: "当前无法开始任务")
             return
@@ -121,16 +121,46 @@ final class SwipeTaskViewModel: ObservableObject {
         watchRewardAd(with: adSlotId)
     }
     
-    /// 预加载指定广告位的广告
-    func preloadAd() {
-        let targetSlotID = currentAdSlotId
-        print("预加载刷刷赚广告位: \(targetSlotID)")
-        rewardAdManager.preloadAd(for: targetSlotID)
+    /// 获取下一次观看的奖励信息
+    func getNextRewardInfo() -> AdRewardConfig? {
+        return rewardConfigs.first { config in
+            config.adCountStart == (currentViewCount + 1)
+        }
     }
     
-    /// 检查当前广告位是否已加载
-    var isAdReady: Bool {
-        return rewardAdManager.isAdReady(for: currentAdSlotId)
+    // MARK: - Private Task Progress Methods - 独立管理进度
+    
+    /// 加载任务进度
+    private func loadTaskProgress() {
+        Task {
+            do {
+                let progress = try await taskService.receiveTask(taskType: taskType.rawValue)
+                
+                await MainActor.run {
+                    self.taskProgress = progress
+                    self.currentViewCount = progress.currentViewCount
+                    self.updateTaskState()
+                    Logger.success("刷刷赚任务进度加载成功: \(self.currentViewCount)", category: .adSlot)
+                    self.preloadAd()
+                }
+            } catch {
+                Logger.error("加载刷刷赚任务进度失败: \(error.localizedDescription)", category: .adSlot)
+            }
+        }
+    }
+    
+    // MARK: - Private Methods - 完整的观看完成处理
+    
+    /// 完全独立处理观看完成逻辑
+    private func handleAdWatchCompleted() async {
+        
+        // 1. 记录观看时间（开始冷却）
+        recordWatchTime()
+        
+        // 2. 刷新任务进度
+        loadTaskProgress()
+        
+        Logger.success("刷刷赚广告观看完成", category: .adSlot)
     }
     
     // MARK: - Private Cooldown Methods
@@ -163,33 +193,23 @@ final class SwipeTaskViewModel: ObservableObject {
     
     /// 更新任务状态
     private func updateTaskState() {
-        guard let swipeTask = swipeTask else { return }
+        guard let task = task else { return }
         
         currentProgress = currentViewCount
-        isTaskCompleted = currentProgress >= swipeTask.totalAdCount
+        isTaskCompleted = currentProgress >= task.totalAdCount
         canStartTask = !isTaskCompleted
         
-        Logger.debug("刷视频任务状态更新 - 进度: \(currentProgress)/\(swipeTask.totalAdCount), 已完成: \(isTaskCompleted)", category: .adSlot)
-    }
-    
-    /// 处理广告观看完成
-    private func handleAdWatchCompleted() async {
-        // 记录观看时间（开始冷却）
-        recordWatchTime()
-        
-        // 更新进度
-        await onAdWatchCompleted?()
-        updateTaskState()
-        
-        // 预加载下一个广告位的广告
-        if !isTaskCompleted {
-            preloadAd()
-        }
-        
-        Logger.info("刷视频任务完成一次，当前进度: \(currentProgress)", category: .adSlot)
+        Logger.debug("刷视频任务状态更新 - 进度: \(currentProgress)/\(task.totalAdCount), 已完成: \(isTaskCompleted)", category: .adSlot)
     }
     
     // MARK: - Private Ad Methods
+    
+    private func preloadAd() {
+        let targetSlotID = currentAdSlotId
+        print("预加载刷刷赚广告位: \(targetSlotID)")
+        rewardAdManager.preloadAd(for: targetSlotID)
+    }
+    
     private func startAdLoading() {
         loadingManager.showLoading(style: .circle)
         
@@ -228,54 +248,54 @@ final class SwipeTaskViewModel: ObservableObject {
     // MARK: - Event Handler
     
     private func handleRewardAdEvent(_ event: RewardAdEvent, for slotID: String) {
-        print("刷刷赚广告事件: \(event), 广告位: \(slotID)")
+        Logger.info("刷刷赚广告事件: \(event), 广告位: \(slotID)", category: .adSlot)
         
         switch event {
         case .loadSuccess:
-            print("广告加载成功: \(slotID)")
+            Logger.info("广告加载成功: \(slotID)", category: .adSlot)
             
         case .loadFailed(let error):
-            print("广告加载失败: \(error), 广告位: \(slotID)")
+            Logger.error("广告加载失败: \(error), 广告位: \(slotID)", category: .adSlot)
             stopAdLoading()
             loadingManager.showError(message: "广告加载失败")
             
         case .showSuccess:
-            print("广告展示成功: \(slotID)")
+            Logger.info("广告展示成功: \(slotID)", category: .adSlot)
             stopAdLoading()
             isShowingAd = true
             
         case .showFailed(let error):
-            print("广告展示失败: \(error), 广告位: \(slotID)")
+            Logger.error("广告展示失败: \(error), 广告位: \(slotID)", category: .adSlot)
             stopAdLoading()
             isShowingAd = false
             loadingManager.showError(message: "广告展示失败")
             
         case .clicked:
-            print("用户点击广告: \(slotID)")
+            Logger.info("用户点击广告: \(slotID)", category: .adSlot)
             
         case .closed:
-            print("广告关闭: \(slotID)")
+            Logger.info("广告关闭: \(slotID)", category: .adSlot)
             isShowingAd = false
             
         case .rewardSuccess(let verified):
-            print("广告奖励成功: \(verified), 广告位: \(slotID)")
+            Logger.info("广告奖励成功: \(verified), 广告位: \(slotID)", category: .adSlot)
             isShowingAd = false
             if verified {
                 Task {
                     await handleAdWatchCompleted()
                 }
             } else {
-                print("广告奖励验证失败: \(slotID)")
+                Logger.warning("广告奖励验证失败: \(slotID)", category: .adSlot)
                 loadingManager.showError(message: "广告奖励验证失败")
             }
             
         case .rewardFailed(let error):
-            print("广告奖励发放失败: \(String(describing: error)), 广告位: \(slotID)")
+            Logger.error("广告奖励发放失败: \(String(describing: error)), 广告位: \(slotID)", category: .adSlot)
             isShowingAd = false
             loadingManager.showError(message: "广告奖励发放失败")
             
         case .playFailed(let error):
-            print("广告播放失败: \(error), 广告位: \(slotID)")
+            Logger.error("广告播放失败: \(error), 广告位: \(slotID)", category: .adSlot)
             isShowingAd = false
             loadingManager.showError(message: "广告播放失败")
             
@@ -287,6 +307,6 @@ final class SwipeTaskViewModel: ObservableObject {
     // MARK: - Deinitializer
     deinit {
         adLoadingTimer?.invalidate()
-        print("SwipeTaskViewModel 销毁")
+        Logger.info("SwipeTaskViewModel 销毁", category: .adSlot)
     }
 }
