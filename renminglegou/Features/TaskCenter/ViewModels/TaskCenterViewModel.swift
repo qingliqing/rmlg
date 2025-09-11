@@ -30,10 +30,6 @@ class TaskCenterViewModel: ObservableObject {
     
     // MARK: - Published Properties
     @Published var isLoading = false
-    @Published var errorMessage: String?
-    @Published var showError = false
-    @Published var showSuccessAlert = false
-    @Published var successMessage: String = ""
     
     // MARK: - Sub ViewModels
     let bannerAdViewModel = BannerAdViewModel()
@@ -75,10 +71,6 @@ class TaskCenterViewModel: ObservableObject {
         return adConfig?.tasks?.first { $0.id == brandTaskType.rawValue }
     }
     
-    var isHandlingAd: Bool {
-        return loadingManager.isShowingLoading || dailyVM.isShowingAd
-    }
-    
     // MARK: - Initialization
     init() {
         setupSubViewModels()
@@ -115,7 +107,6 @@ class TaskCenterViewModel: ObservableObject {
     func loadData() {
         Task {
             isLoading = true
-            errorMessage = nil
             
             async let adConfigTask: () = loadAdConfig()
             async let rewardConfigsTask: () = loadRewardConfigs()
@@ -128,7 +119,6 @@ class TaskCenterViewModel: ObservableObject {
                 
             } catch {
                 isLoading = false
-                showErrorMessage("数据加载失败: \(error.localizedDescription)")
                 Logger.error("TaskCenter数据加载失败: \(error.localizedDescription)", category: .general)
             }
         }
@@ -161,11 +151,21 @@ class TaskCenterViewModel: ObservableObject {
         Logger.debug("任务进度更新 - 每日:\(dailyViewCount), 刷刷赚:\(swipeTaskProgress?.currentViewCount ?? 0)", category: .general)
     }
     
-    // MARK: - Daily Task Methods (简化为直接调用)
+    // MARK: - RewardAD Method
+    /// 获取下一次观看的奖励信息
+    func getNextRewardInfo(for taskType: AdTaskType) -> AdRewardConfig? {
+        let currentCount = getCurrentCount(for: taskType)
+        return rewardConfigs.first { config in
+            config.adCountStart == (currentCount + 1)
+        }
+    }
     
-    func watchDailyTaskAd() {
-        // 直接调用子ViewModel的方法，让它自己处理所有逻辑
-        dailyVM.watchRewardAd()
+    private func getCurrentCount(for taskType: AdTaskType) -> Int {
+        switch taskType {
+        case .dailyTask: return dailyViewCount
+        case .swipeTask: return swipeTaskProgress?.currentViewCount ?? 0
+        case .brandTask: return brandTaskProgress?.currentViewCount ?? 0
+        }
     }
     
     private func handleDailyAdWatchCompleted() async {
@@ -200,45 +200,6 @@ class TaskCenterViewModel: ObservableObject {
             loadingManager.showError(message: "处理广告完成失败")
             Logger.error("处理刷刷赚广告完成失败: \(error.localizedDescription)", category: .adSlot)
         }
-    }
-    
-    // MARK: - Helper Methods
-    
-    private func showErrorMessage(_ message: String) {
-        errorMessage = message
-        showError = true
-    }
-    
-    private func showSuccessMessage(_ message: String) {
-        successMessage = message
-        showSuccessAlert = true
-    }
-    
-    // MARK: - Status Methods
-    
-    func getAdSlotStatus() -> String {
-        guard adSlotManager.isInitialized else {
-            return "广告位管理器未初始化"
-        }
-        
-        let status = adSlotManager.getCacheStatus()
-        return """
-        广告位状态: \(status.isValid ? "有效" : "无效")
-        总广告位数: \(status.totalSlots)
-        更新时间: \(status.lastUpdate?.description ?? "无")
-        每日任务冷却: \(dailyVM.cooldownRemaining)秒
-        """
-    }
-    
-    func refreshAdSlotData() {
-        Task {
-            Logger.info("手动刷新广告位数据", category: .adSlot)
-            await adSlotManager.refreshAdSlotData()
-        }
-    }
-    
-    var isAdSlotManagerReady: Bool {
-        return adSlotManager.isInitialized
     }
 }
 

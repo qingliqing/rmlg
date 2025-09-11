@@ -148,13 +148,6 @@ final class DailyTaskViewModel: ObservableObject {
         showRewardAd()
     }
     
-    /// 预加载指定广告位的广告
-    func preloadAd(for slotID: String? = nil) {
-        let targetSlotID = slotID ?? currentSlotID
-        print("预加载广告位: \(targetSlotID)")
-        rewardAdManager.preloadAd(for: targetSlotID)
-    }
-    
     /// 检查当前广告位是否已加载
     var isAdReady: Bool {
         return rewardAdManager.isAdReady(for: currentSlotID)

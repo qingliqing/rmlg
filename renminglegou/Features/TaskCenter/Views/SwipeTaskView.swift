@@ -86,7 +86,7 @@ struct SwipeTaskView: View {
                             shouldShowAdAfterDismiss = false
                             // 不需要延迟，因为动画已经完成
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                                swipeVM.startSwipeTask()
+                                swipeVM.startSwipeTask(rewardConfig: viewModel.getNextRewardInfo(for: .swipeTask))
                             }
                         }
                     }

@@ -15,10 +15,12 @@ typealias RewardAdShowCallback = (Result<Void, Error>) -> Void
 // MARK: - 单个广告位管理器
 class SingleRewardAdManager: NSObject {
     
-    // MARK: - 属性
+    // MARK: - 属性（添加自动移除回调）
     private var rewardedVideoAd: BUNativeExpressRewardedVideoAd?
+    private var rewardedVideoModel: BURewardedVideoModel?
     private let adSlotID: String
     private var currentState: RewardAdState = .initial
+    private var rewardConfig: AdRewardConfig?
     
     // 回调存储
     private var eventCallback: RewardAdEventCallback?
@@ -27,40 +29,48 @@ class SingleRewardAdManager: NSObject {
     
     // 超时管理
     private var loadingTimer: Timer?
-    private let loadTimeout: TimeInterval = 15.0 // 15秒超时
+    private let loadTimeout: TimeInterval = 15.0
     
-    // 配置
-    var autoReloadAfterClose: Bool = true
+    // 【新增】自动移除回调
+    private var autoRemoveCallback: ((String) -> Void)?
     
-    // MARK: - 初始化
-    init(slotID: String) {
+    // MARK: - 初始化（修改构造函数）
+    init(slotID: String,
+         rewardConfig: AdRewardConfig?,
+         autoRemoveCallback: ((String) -> Void)? = nil) {
         self.adSlotID = slotID
+        self.rewardConfig = rewardConfig
+        self.autoRemoveCallback = autoRemoveCallback
         super.init()
+        Logger.info("广告管理器初始化完成 - 广告位: \(adSlotID)")
+    }
+    
+    // MARK: - 析构函数（确保资源清理）
+    deinit {
+        Logger.info("🗑️ 广告管理器即将释放 - 广告位: \(adSlotID)")
+        cleanupAllResources()
     }
     
     // MARK: - 公开方法
     
     /// 设置事件回调（监听所有事件）
-    /// - Parameter callback: 事件回调
     func setEventCallback(_ callback: RewardAdEventCallback?) {
         self.eventCallback = callback
     }
     
     /// 预加载广告
-    /// - Parameter completion: 加载结果回调
     func preloadAd(completion: RewardAdLoadCallback? = nil) {
-        
         if let completion = completion {
             loadCallbacks.append(completion)
         }
         
         guard currentState != .loading else {
-            print("广告位 \(adSlotID) 正在加载中...")
+            Logger.info("广告位 \(adSlotID) 正在加载中...")
             return
         }
         
         if isReady {
-            print("广告位 \(adSlotID) 已准备就绪")
+            Logger.info("广告位 \(adSlotID) 已准备就绪")
             executeLoadCallbacks(.success(()))
             return
         }
@@ -69,17 +79,11 @@ class SingleRewardAdManager: NSObject {
     }
     
     /// 展示广告
-    /// - Parameters:
-    ///   - viewController: 展示控制器
-    ///   - eventCallback: 事件回调（可选，如果设置会覆盖全局回调）
-    ///   - completion: 展示结果回调（成功表示开始展示，不代表奖励获得）
-    ///   - autoLoad: 是否自动加载
     func showAd(from viewController: UIViewController,
                 eventCallback: RewardAdEventCallback? = nil,
                 completion: RewardAdShowCallback? = nil,
                 autoLoad: Bool = true) {
         
-        // 临时设置事件回调
         if let eventCallback = eventCallback {
             self.eventCallback = eventCallback
         }
@@ -89,7 +93,7 @@ class SingleRewardAdManager: NSObject {
             performShow(from: viewController, completion: completion)
             
         case .loading:
-            print("广告正在加载中，加入等待队列")
+            Logger.info("广告正在加载中，加入等待队列")
             pendingShowRequest = (viewController, eventCallback, completion)
             
         case .showing:
@@ -99,7 +103,7 @@ class SingleRewardAdManager: NSObject {
             
         default:
             if autoLoad {
-                print("广告未准备就绪，开始自动加载")
+                Logger.info("广告未准备就绪，开始自动加载")
                 pendingShowRequest = (viewController, eventCallback, completion)
                 preloadAd { [weak self] result in
                     switch result {
@@ -153,27 +157,27 @@ class SingleRewardAdManager: NSObject {
         }
     }
     
-    // MARK: - 销毁方法
-    func destroyAd() {
+    // MARK: - 私有方法
+    
+    /// 完全清理所有资源
+    private func cleanupAllResources() {
         cleanupCurrentAd()
-        currentState = .initial
+        destroyAdObject()
+        
+        // 清理回调
         eventCallback = nil
         loadCallbacks.removeAll()
         pendingShowRequest = nil
+        autoRemoveCallback = nil
+        rewardConfig = nil
+        
+        Logger.info("所有资源已清理 - 广告位: \(adSlotID)")
     }
     
-    // MARK: - 私有方法
-    
-    private func startLoading() {
-        // 先清理旧的广告对象
-        cleanupCurrentAd()
-        
-        currentState = .loading
-        notifyEvent(.loadStarted)
-        
-        // 设置加载超时定时器
-        loadingTimer = Timer.scheduledTimer(withTimeInterval: loadTimeout, repeats: false) { [weak self] _ in
-            self?.handleLoadTimeout()
+    /// 创建奖励视频广告对象
+    private func createRewardedVideoAd() {
+        if rewardedVideoAd != nil {
+            destroyAdObject()
         }
         
         let slot = BUAdSlot()
@@ -181,8 +185,15 @@ class SingleRewardAdManager: NSObject {
         slot.mediation.mutedIfCan = false
         
         let rewardedVideoModel = BURewardedVideoModel()
+        self.rewardedVideoModel = rewardedVideoModel
         let userId = "ios_\(UserModel.shared.userId)_\(Int64(Date().timeIntervalSince1970 * 1000))"
         rewardedVideoModel.userId = userId
+        if let config = rewardConfig,
+           let amount = config.points,
+           let name = config.rewardDescription {
+            rewardedVideoModel.rewardAmount = amount
+            rewardedVideoModel.rewardName = name
+        }
         
         let rewardedVideoAd = BUNativeExpressRewardedVideoAd(slot: slot, rewardedVideoModel: rewardedVideoModel)
         rewardedVideoAd.delegate = self
@@ -190,21 +201,41 @@ class SingleRewardAdManager: NSObject {
         rewardedVideoAd.mediation?.addParam(NSNumber(value: 0), withKey: "show_direction")
         
         self.rewardedVideoAd = rewardedVideoAd
-        self.rewardedVideoAd?.loadData()
         
-        print("开始加载广告 - 广告位: \(adSlotID)")
+        Logger.info("新广告对象创建完成 - 广告位: \(adSlotID)")
+    }
+    
+    /// 销毁广告对象
+    private func destroyAdObject() {
+        if let ad = rewardedVideoAd {
+            ad.delegate = nil
+            ad.rewardPlayAgainInteractionDelegate = nil
+            self.rewardedVideoAd = nil
+            Logger.info("广告对象已销毁 - 广告位: \(adSlotID)")
+        }
+        self.rewardedVideoModel = nil
+    }
+    
+    private func startLoading() {
+        createRewardedVideoAd()
+        currentState = .loading
+        notifyEvent(.loadStarted)
+        
+        loadingTimer = Timer.scheduledTimer(withTimeInterval: loadTimeout, repeats: false) { [weak self] _ in
+            self?.handleLoadTimeout()
+        }
+        
+        rewardedVideoAd?.loadData()
+        Logger.info("开始加载广告 - 广告位: \(adSlotID)")
     }
     
     private func cleanupCurrentAd() {
         loadingTimer?.invalidate()
         loadingTimer = nil
-        
-        rewardedVideoAd?.delegate = nil
-        rewardedVideoAd = nil
     }
     
     private func handleLoadTimeout() {
-        print("⚠️ 广告加载超时 - 广告位: \(adSlotID)")
+        Logger.info("⚠️ 广告加载超时 - 广告位: \(adSlotID)")
         let error = NSError(domain: "RewardAdManager", code: -100,
                           userInfo: [NSLocalizedDescriptionKey: "广告加载超时"])
         
@@ -212,13 +243,13 @@ class SingleRewardAdManager: NSObject {
         notifyEvent(.loadFailed(error))
         executeLoadCallbacks(.failure(error))
         
-        // 处理等待中的展示请求
         if let (_, _, completion) = pendingShowRequest {
             pendingShowRequest = nil
             completion?(.failure(error))
         }
         
         cleanupCurrentAd()
+        destroyAdObject()
     }
     
     private func performShow(from viewController: UIViewController, completion: RewardAdShowCallback?) {
@@ -231,8 +262,6 @@ class SingleRewardAdManager: NSObject {
         
         currentState = .showing
         notifyEvent(.showStarted)
-        
-        // 注意：这里的 completion 表示开始展示，不是展示成功
         completion?(.success(()))
         
         ad.show(fromRootViewController: viewController)
@@ -260,34 +289,36 @@ class SingleRewardAdManager: NSObject {
     private func notifyEvent(_ event: RewardAdEvent) {
         DispatchQueue.main.async {
             self.eventCallback?(event)
-            print("📺 广告事件 - 广告位: \(self.adSlotID), 事件: \(event.description)")
+            Logger.info("📺 广告事件 - 广告位: \(self.adSlotID), 事件: \(event.description)")
         }
+    }
+    
+    /// 触发自动移除 - 新增方法
+    private func triggerAutoRemove() {
+        Logger.info("🗑️ 触发自动移除 - 广告位: \(adSlotID)")
+        autoRemoveCallback?(adSlotID)
     }
 }
 
 // MARK: - SDK代理实现
 extension SingleRewardAdManager: BUMNativeExpressRewardedVideoAdDelegate {
     
-    /// 广告加载成功
     func nativeExpressRewardedVideoAdDidLoad(_ rewardedVideoAd: BUNativeExpressRewardedVideoAd) {
-        // 清除超时定时器
         loadingTimer?.invalidate()
         loadingTimer = nil
         
-        print("✅ 广告加载成功 - 广告位: \(adSlotID)")
+        Logger.info("✅ 广告加载成功 - 广告位: \(adSlotID)")
         currentState = .loaded
         notifyEvent(.loadSuccess)
         executeLoadCallbacks(.success(()))
         handlePendingShow()
     }
     
-    /// 广告加载失败
     func nativeExpressRewardedVideoAd(_ rewardedVideoAd: BUNativeExpressRewardedVideoAd, didFailWithError error: Error?) {
-        // 清除超时定时器
         loadingTimer?.invalidate()
         loadingTimer = nil
         
-        print("❌ 广告加载失败 - 广告位: \(adSlotID), 错误: \(error?.localizedDescription ?? "未知错误")")
+        Logger.info("❌ 广告加载失败 - 广告位: \(adSlotID), 错误: \(error?.localizedDescription ?? "未知错误")")
         currentState = .loadFailed
         let adError = error ?? NSError(domain: "RewardAdManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "广告加载失败"])
         
@@ -300,87 +331,91 @@ extension SingleRewardAdManager: BUMNativeExpressRewardedVideoAdDelegate {
         }
         
         cleanupCurrentAd()
+        destroyAdObject()
     }
     
-    /// 广告素材下载完成
     func nativeExpressRewardedVideoAdDidDownLoadVideo(_ rewardedVideoAd: BUNativeExpressRewardedVideoAd) {
-        print("📥 广告素材下载完成 - 广告位: \(adSlotID)")
+        Logger.info("📥 广告素材下载完成 - 广告位: \(adSlotID)")
         currentState = .videoDownloaded
         notifyEvent(.videoDownloaded)
     }
     
-    /// 广告展示成功
     func nativeExpressRewardedVideoAdDidVisible(_ rewardedVideoAd: BUNativeExpressRewardedVideoAd) {
-        print("👀 广告展示成功 - 广告位: \(adSlotID)")
+        Logger.info("👀 广告展示成功 - 广告位: \(adSlotID)")
         notifyEvent(.showSuccess)
         
         if let info = rewardedVideoAd.mediation?.getShowEcpmInfo() {
-            print("💰 广告信息 - 广告位: \(adSlotID), ecpm: \(info.ecpm ?? "None"), platform: \(info.adnName)")
+            Logger.info("💰 广告信息 - 广告位: \(adSlotID), ecpm: \(info.ecpm ?? "None"), platform: \(info.adnName)")
         }
     }
     
-    /// 广告展示失败
     func nativeExpressRewardedVideoAdDidShowFailed(_ rewardedVideoAd: BUNativeExpressRewardedVideoAd, error: Error) {
-        print("❌ 广告展示失败 - 广告位: \(adSlotID), 错误: \(error.localizedDescription)")
+        Logger.info("❌ 广告展示失败 - 广告位: \(adSlotID), 错误: \(error.localizedDescription)")
         currentState = .showFailed
         notifyEvent(.showFailed(error))
+        
+        cleanupCurrentAd()
+        destroyAdObject()
     }
     
-    /// 广告被点击
     func nativeExpressRewardedVideoAdDidClick(_ rewardedVideoAd: BUNativeExpressRewardedVideoAd) {
-        print("👆 广告被点击 - 广告位: \(adSlotID)")
+        Logger.info("👆 广告被点击 - 广告位: \(adSlotID)")
         currentState = .clicked
         notifyEvent(.clicked)
     }
     
-    /// 广告被跳过
     func nativeExpressRewardedVideoAdDidClickSkip(_ rewardedVideoAd: BUNativeExpressRewardedVideoAd) {
-        print("⏭️ 广告被跳过 - 广告位: \(adSlotID)")
+        Logger.info("⏭️ 广告被跳过 - 广告位: \(adSlotID)")
         currentState = .skipped
         notifyEvent(.skipped)
+        
+        if let config = rewardConfig {
+            Logger.info("💡 奖励信息 - 广告位: \(adSlotID), 奖励: \(String(describing: config.points)) \(config.rewardDescription ?? "积分")")
+        }
     }
     
-    /// 广告播放完成/失败
     func nativeExpressRewardedVideoAdDidPlayFinish(_ rewardedVideoAd: BUNativeExpressRewardedVideoAd, didFailWithError error: Error?) {
         if let error = error {
-            print("❌ 广告播放失败 - 广告位: \(adSlotID), 错误: \(error.localizedDescription)")
+            Logger.info("❌ 广告播放失败 - 广告位: \(adSlotID), 错误: \(error.localizedDescription)")
             currentState = .playFailed
             notifyEvent(.playFailed(error))
         } else {
-            print("✅ 广告播放完成 - 广告位: \(adSlotID)")
+            Logger.info("✅ 广告播放完成 - 广告位: \(adSlotID)")
             currentState = .playFinished
             notifyEvent(.playFinished)
         }
     }
     
-    /// 广告奖励发放成功
     func nativeExpressRewardedVideoAdServerRewardDidSucceed(_ rewardedVideoAd: BUNativeExpressRewardedVideoAd, verify: Bool) {
-        print("🎁 奖励发放成功 - 广告位: \(adSlotID), 验证: \(verify)")
+        Logger.info("🎁 奖励发放成功 - 广告位: \(adSlotID), 验证: \(verify)")
+        
+        if let config = rewardConfig {
+            Logger.info("💰 获得奖励 - 广告位: \(adSlotID), 奖励: \(String(describing: config.points)) \(config.rewardDescription ?? "积分")")
+        }
+        
         currentState = .rewardSuccess
         notifyEvent(.rewardSuccess(verified: verify))
     }
     
-    /// 广告奖励发放失败
     func nativeExpressRewardedVideoAdServerRewardDidFail(_ rewardedVideoAd: BUNativeExpressRewardedVideoAd, error: Error?) {
-        print("❌ 奖励发放失败 - 广告位: \(adSlotID), 错误: \(error?.localizedDescription ?? "未知错误")")
+        Logger.info("❌ 奖励发放失败 - 广告位: \(adSlotID), 错误: \(error?.localizedDescription ?? "未知错误")")
         currentState = .rewardFailed
         notifyEvent(.rewardFailed(error))
     }
     
-    /// 广告关闭
+    /// 广告关闭 - 关键修改：触发自动移除
     func nativeExpressRewardedVideoAdDidClose(_ rewardedVideoAd: BUNativeExpressRewardedVideoAd) {
-        print("🚪 广告关闭 - 广告位: \(adSlotID)")
+        Logger.info("🚪 广告关闭 - 广告位: \(adSlotID)")
         currentState = .closed
         notifyEvent(.closed)
         
-        // 清理广告对象
+        // 清理资源
         cleanupCurrentAd()
+        destroyAdObject()
         
-        if autoReloadAfterClose {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                print("🔄 自动重新加载广告 - 广告位: \(self.adSlotID)")
-                self.preloadAd()
-            }
+        // 延迟触发自动移除，确保所有回调都执行完毕
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.triggerAutoRemove()
         }
     }
 }

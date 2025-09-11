@@ -105,7 +105,7 @@ final class SwipeTaskViewModel: ObservableObject {
     }
     
     /// 开始刷视频任务
-    func startSwipeTask() {
+    func startSwipeTask(rewardConfig: AdRewardConfig?) {
         guard canStartTask else {
             loadingManager.showError(message: "当前无法开始任务")
             return
@@ -117,9 +117,7 @@ final class SwipeTaskViewModel: ObservableObject {
         }
         
         let adSlotId = currentAdSlotId
-        setupRewardAdManager(for: adSlotId)
-        
-        Logger.info("开始刷视频任务，广告位ID: \(adSlotId)", category: .adSlot)
+        Logger.info("开始刷刷赚任务，广告位ID: \(adSlotId)", category: .adSlot)
         watchRewardAd(with: adSlotId)
     }
     
@@ -192,19 +190,6 @@ final class SwipeTaskViewModel: ObservableObject {
     }
     
     // MARK: - Private Ad Methods
-    
-    private func setupRewardAdManager(for slotID: String) {
-        // 为当前广告位设置事件处理器
-        rewardAdManager.setEventHandler(for: slotID) { [weak self] event in
-            Task { @MainActor in
-                self?.handleRewardAdEvent(event, for: slotID)
-            }
-        }
-        
-        // 预加载当前广告位
-        rewardAdManager.preloadAd(for: slotID)
-    }
-    
     private func startAdLoading() {
         loadingManager.showLoading(style: .circle)
         
@@ -233,6 +218,11 @@ final class SwipeTaskViewModel: ObservableObject {
         }
         
         startAdLoading()
+        rewardAdManager.setEventHandler(for: slotID) { [weak self] event in
+            Task { @MainActor in
+                self?.handleRewardAdEvent(event, for: slotID)
+            }
+        }
         rewardAdManager.showAd(for: slotID, from: viewController)
     }
     
