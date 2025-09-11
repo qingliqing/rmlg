@@ -185,34 +185,7 @@ class TaskCenterViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Swipe Task Methods (保持原有逻辑)
-    
-    func watchSwipeTaskAd() {
-        guard adSlotManager.isInitialized else {
-            showErrorMessage("广告位尚未初始化，请稍后重试")
-            Logger.warning("广告位管理器未初始化，无法观看刷刷赚广告", category: .adSlot)
-            return
-        }
-        
-        let currentCount = swipeTaskProgress?.currentViewCount ?? 0
-        guard let adSlotId = adSlotManager.getCurrentSwipeAdSlotId(currentViewCount: currentCount) else {
-            showErrorMessage("暂无可用的广告位，请稍后重试")
-            Logger.warning("未找到可用的刷刷赚广告位", category: .adSlot)
-            return
-        }
-        
-        Logger.adSlot("开始观看刷刷赚广告，广告位ID: \(adSlotId)")
-        swipeVM.setAdSlotId(adSlotId)
-        
-        // 预加载下一个广告位
-        if let nextAdSlotId = adSlotManager.getNextSwipeAdSlotId(currentViewCount: currentCount) {
-            Logger.info("预加载下一个刷刷赚广告位: \(nextAdSlotId)", category: .adSlot)
-            swipeVM.preloadAd(for: nextAdSlotId)
-        }
-        
-        swipeVM.watchRewardAd()
-    }
-    
+    // MARK: - Swipe Task Methods
     private func handleSwipeAdWatchCompleted() async {
         do {
             loadingManager.showLoading(style: .pulse)

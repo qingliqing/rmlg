@@ -10,6 +10,11 @@ class PureLoadingManager: ObservableObject {
     @Published var loadingStyle: LoadingStyle = .spinner
     @Published var alertMessage: String?
     @Published var alertType: AlertType = .success
+    @Published var alertPosition: AlertPosition = .top
+    
+    // 定时器管理
+    private var hideAlertTimer: Timer?
+    private var alertId: UUID? // 用于标识当前提示消息，防止被错误清除
     
     enum LoadingStyle {
         case spinner          // 原生旋转
@@ -41,10 +46,30 @@ class PureLoadingManager: ObservableObject {
         }
     }
     
+    enum AlertPosition {
+        case top
+        case center
+        case bottom
+        
+        var transition: AnyTransition {
+            switch self {
+            case .top:
+                return .move(edge: .top).combined(with: .opacity)
+            case .center:
+                return .scale.combined(with: .opacity)
+            case .bottom:
+                return .move(edge: .bottom).combined(with: .opacity)
+            }
+        }
+    }
+    
     private init() {}
     
     /// 显示Loading
     func showLoading(style: LoadingStyle = .spinner) {
+        // 先取消任何正在显示的提示消息
+        cancelAlert()
+        
         withAnimation(.easeInOut(duration: 0.3)) {
             isShowingLoading = true
             loadingStyle = style
@@ -59,27 +84,113 @@ class PureLoadingManager: ObservableObject {
     }
     
     /// 显示提示消息
-    func showAlert(message: String, type: AlertType = .info) {
+    func showAlert(message: String,
+                   type: AlertType = .info,
+                   position: AlertPosition = .top,
+                   duration: TimeInterval = 3.0) {
+        // 先隐藏Loading
         hideLoading()
-        alertMessage = message
-        alertType = type
         
-        // 3秒后自动隐藏
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            withAnimation {
-                self.alertMessage = nil
+        // 取消之前的定时器
+        cancelAlert()
+        
+        // 生成新的消息ID
+        let newAlertId = UUID()
+        alertId = newAlertId
+        
+        // 设置新的提示消息
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            alertMessage = message
+            alertType = type
+            alertPosition = position
+        }
+        
+        // 设置自动隐藏定时器 - 修复Swift 6并发问题
+        hideAlertTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
+            guard let self = self else { return }
+            
+            Task { @MainActor in
+                // 只有当前提示消息ID匹配时才隐藏（防止新消息被误清除）
+                if self.alertId == newAlertId {
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        self.alertMessage = nil
+                        self.alertId = nil
+                    }
+                }
             }
         }
     }
     
     /// 显示成功提示
-    func showSuccess(message: String) {
-        showAlert(message: message, type: .success)
+    func showSuccess(message: String,
+                     position: AlertPosition = .top,
+                     duration: TimeInterval = 3.0) {
+        showAlert(message: message, type: .success, position: position, duration: duration)
     }
     
     /// 显示错误提示
-    func showError(message: String) {
-        showAlert(message: message, type: .error)
+    func showError(message: String,
+                   position: AlertPosition = .top,
+                   duration: TimeInterval = 3.0) {
+        showAlert(message: message, type: .error, position: position, duration: duration)
+    }
+    
+    /// 显示信息提示
+    func showInfo(message: String,
+                  position: AlertPosition = .top,
+                  duration: TimeInterval = 3.0) {
+        showAlert(message: message, type: .info, position: position, duration: duration)
+    }
+    
+    /// 手动隐藏提示消息
+    func hideAlert() {
+        cancelAlert()
+        
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            alertMessage = nil
+        }
+    }
+    
+    /// 取消当前提示消息和定时器
+    private func cancelAlert() {
+        hideAlertTimer?.invalidate()
+        hideAlertTimer = nil
+        alertId = nil
+    }
+    
+    /// 检查是否有提示消息正在显示
+    var isShowingAlert: Bool {
+        return alertMessage != nil
+    }
+    
+    /// 显示临时成功提示（短时间显示）
+    func showQuickSuccess(message: String, position: AlertPosition = .center) {
+        showSuccess(message: message, position: position, duration: 1.5)
+    }
+    
+    /// 显示临时错误提示（短时间显示）
+    func showQuickError(message: String, position: AlertPosition = .center) {
+        showError(message: message, position: position, duration: 1.5)
+    }
+    
+    /// 显示持久化错误提示（需要用户手动关闭或长时间显示）
+    func showPersistentError(message: String, position: AlertPosition = .center) {
+        showError(message: message, position: position, duration: 5.0)
+    }
+    
+    /// 批量操作时的防抖动方法 - 修复Swift 6并发问题
+    func debouncedShowSuccess(message: String, delay: TimeInterval = 0.3) {
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            if !self.isShowingAlert {
+                self.showQuickSuccess(message: message)
+            }
+        }
+    }
+    
+    deinit {
+        hideAlertTimer?.invalidate()
+        hideAlertTimer = nil
     }
 }
 
@@ -219,6 +330,49 @@ struct CircleLoadingView: View {
     }
 }
 
+// MARK: - 提示消息内容组件
+struct AlertMessageContent: View {
+    let message: String
+    let type: PureLoadingManager.AlertType
+    @ObservedObject private var loadingManager = PureLoadingManager.shared
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: type.icon)
+                .foregroundColor(type.color)
+                .font(.title2)
+            
+            Text(message)
+                .foregroundColor(.white)
+                .font(.system(size: 14, weight: .medium))
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+            
+            Spacer()
+            
+            // 添加关闭按钮（可选）
+            Button(action: {
+                loadingManager.hideAlert()
+            }) {
+                Image(systemName: "xmark")
+                    .foregroundColor(.white.opacity(0.7))
+                    .font(.caption)
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.black.opacity(0.85))
+        )
+        .padding(.horizontal)
+        .onTapGesture {
+            // 点击消息也可以关闭
+            loadingManager.hideAlert()
+        }
+    }
+}
+
 // MARK: - 纯SwiftUI Loading视图
 struct PureSwiftUILoadingView: View {
     @ObservedObject private var loadingManager = PureLoadingManager.shared
@@ -230,6 +384,10 @@ struct PureSwiftUILoadingView: View {
                 Color.black.opacity(0.5)
                     .ignoresSafeArea()
                     .transition(.opacity)
+                    .onTapGesture {
+                        // 可选：点击遮罩关闭Loading（根据需求决定是否保留）
+                        // loadingManager.hideLoading()
+                    }
                 
                 VStack(spacing: 0) {
                     CustomLoadingIndicator(style: loadingManager.loadingStyle)
@@ -242,34 +400,64 @@ struct PureSwiftUILoadingView: View {
                 .transition(.scale.combined(with: .opacity))
             }
             
-            // 顶部提示消息
+            // 根据位置显示提示消息
             if let alertMessage = loadingManager.alertMessage {
-                VStack {
-                    HStack(spacing: 12) {
-                        Image(systemName: loadingManager.alertType.icon)
-                            .foregroundColor(loadingManager.alertType.color)
-                            .font(.title2)
-                        
-                        Text(alertMessage)
-                            .foregroundColor(.white)
-                            .font(.system(size: 14, weight: .medium))
-                        
-                        Spacer()
-                    }
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color.black.opacity(0.85))
-                    )
-                    .padding(.horizontal)
-                    .padding(.top, 50)
-                    
-                    Spacer()
+                switch loadingManager.alertPosition {
+                case .top:
+                    topAlertView(message: alertMessage)
+                case .center:
+                    centerAlertView(message: alertMessage)
+                case .bottom:
+                    bottomAlertView(message: alertMessage)
                 }
-                .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: loadingManager.isShowingLoading)
-        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: loadingManager.alertMessage)
+        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: loadingManager.alertMessage != nil)
+    }
+    
+    // MARK: - 位置视图
+    
+    @ViewBuilder
+    private func topAlertView(message: String) -> some View {
+        VStack {
+            AlertMessageContent(
+                message: message,
+                type: loadingManager.alertType
+            )
+            .padding(.top, 50)
+            
+            Spacer()
+        }
+        .transition(loadingManager.alertPosition.transition)
+    }
+    
+    @ViewBuilder
+    private func centerAlertView(message: String) -> some View {
+        VStack {
+            Spacer()
+            
+            AlertMessageContent(
+                message: message,
+                type: loadingManager.alertType
+            )
+            
+            Spacer()
+        }
+        .transition(loadingManager.alertPosition.transition)
+    }
+    
+    @ViewBuilder
+    private func bottomAlertView(message: String) -> some View {
+        VStack {
+            Spacer()
+            
+            AlertMessageContent(
+                message: message,
+                type: loadingManager.alertType
+            )
+            .padding(.bottom, 50)
+        }
+        .transition(loadingManager.alertPosition.transition)
     }
 }

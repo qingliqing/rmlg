@@ -96,7 +96,9 @@ struct SwipeTaskView: View {
     
     // MARK: - Private Methods
     private func handleSwipeAction() {
-        if swipeVM.isButtonEnabled && !swipeVM.isTaskCompleted {
+        if swipeVM.isButtonEnabled,
+           swipeVM.checkRemainColddown(),
+           !swipeVM.isTaskCompleted {
             showRewardPopup = true
         }
     }

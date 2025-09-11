@@ -40,6 +40,10 @@ class SDKManager: ObservableObject {
         return adSDKInitialized && adSlotManagerInitialized
     }
     
+    var isAdSDKReady: Bool {
+        return BUAdSDKManager.state == .start
+    }
+    
     /// 初始化状态信息
     var initializationStatus: String {
         var status = ["初始化状态:"]
