@@ -9,132 +9,218 @@ import Foundation
 import BUAdSDK
 import UIKit
 
+// MARK: - 回调类型定义
+typealias SplashAdLoadCallback = (Result<Void, Error>) -> Void
+typealias SplashAdShowCallback = (SplashAdEvent) -> Void
+
+// MARK: - 广告事件枚举
+enum SplashAdEvent {
+    case loadSuccess
+    case loadFailed(Error)
+    case willShow
+    case didShow
+    case showFailed(Error)
+    case clicked
+    case closed(closeType: String)
+    case renderSuccess
+    case renderFailed(Error)
+    case videoPlayFinished
+    case videoPlayFailed(Error)
+}
+
 class SplashAdManager: NSObject, ObservableObject {
     static let shared = SplashAdManager()
     
     // MARK: - 属性
     private var splashAd: BUSplashAd?
-    
-    // 广告位ID - 替换为你的真实广告位ID
-    private let adSlotID = "103508882" // 这是示例ID，请替换为真实ID
+    private var currentAdSlotId: String?
     
     // 状态发布
     @Published var isLoading = false
     @Published var hasShown = false
+    @Published var isAdReady = false
     
     // 状态控制
-    private var shouldShowSplashAd = true  // 是否允许展示开屏广告
-    private var hasShownThisSession = false  // 本次会话是否已展示过
-    private var isInSplashView = true  // 是否在启动页中
+    private var shouldShowSplashAd = true
+    private var hasShownThisSession = false
+    private var isInSplashView = true
+    private var isDestroyed = false
+    
+    // 回调存储
+    private var loadCallback: SplashAdLoadCallback?
+    private var eventCallback: SplashAdShowCallback?
     
     override private init() {
         super.init()
-        print("SplashAdManager 初始化")
+        Logger.info("SplashAdManager 初始化", category: .adSlot)
     }
     
     // MARK: - 公共方法
     
+    /// 设置事件回调
+    func setEventCallback(_ callback: @escaping SplashAdShowCallback) {
+        self.eventCallback = callback
+    }
+    
+    /// 重置会话状态
+    func resetSessionState() {
+        guard !isDestroyed else { return }
+        
+        hasShownThisSession = false
+        shouldShowSplashAd = true
+        isInSplashView = true
+        isAdReady = false
+        currentAdSlotId = nil
+        loadCallback = nil
+        eventCallback = nil
+        
+        Logger.info("重置开屏广告会话状态", category: .adSlot)
+    }
+    
     /// 设置是否在启动页中
     func setInSplashView(_ inSplash: Bool) {
-        isInSplashView = inSplash
-        print("设置启动页状态: \(inSplash ? "在启动页" : "已离开启动页")")
+        if isInSplashView == inSplash { return }
         
-        // 离开启动页时禁用开屏广告
+        isInSplashView = inSplash
+        Logger.info("设置启动页状态: \(inSplash ? "在启动页" : "已离开启动页")", category: .adSlot)
+        
         if !inSplash {
             shouldShowSplashAd = false
         }
     }
     
-    /// 重置会话状态（应用启动时调用）
-    func resetSessionState() {
-        hasShownThisSession = false
-        shouldShowSplashAd = true
-        isInSplashView = true
-        print("重置开屏广告会话状态")
-    }
-    
     /// 禁用开屏广告展示
     func disableSplashAd() {
+        guard !isDestroyed else { return }
+        
         shouldShowSplashAd = false
-        print("禁用开屏广告展示")
+        Logger.info("禁用开屏广告展示", category: .adSlot)
     }
     
     /// 加载开屏广告
-    func loadSplashAd() {
-        print("开始加载开屏广告...")
+    func loadSplashAd(completion: SplashAdLoadCallback? = nil) {
+        guard !isDestroyed else {
+            Logger.warning("广告管理器已销毁，跳过加载", category: .adSlot)
+            completion?(.failure(NSError(domain: "SplashAdManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "管理器已销毁"])))
+            return
+        }
         
-        // 检查展示条件
+        Logger.info("开始加载开屏广告...", category: .adSlot)
+        
         guard shouldShowSplashAd && !hasShownThisSession && isInSplashView else {
-            print("不满足展示条件，跳过开屏广告加载")
-            print("- shouldShowSplashAd: \(shouldShowSplashAd)")
-            print("- hasShownThisSession: \(hasShownThisSession)")
-            print("- isInSplashView: \(isInSplashView)")
-            postNotification(.splashAdLoadFailed, userInfo: ["error": "不满足展示条件"])
+            let errorMsg = "不满足展示条件 - shouldShow: \(shouldShowSplashAd), hasShown: \(hasShownThisSession), inSplash: \(isInSplashView)"
+            Logger.warning(errorMsg, category: .adSlot)
+            let error = NSError(domain: "SplashAdManager", code: -2, userInfo: [NSLocalizedDescriptionKey: errorMsg])
+            completion?(.failure(error))
             return
         }
         
         guard !isLoading else {
-            print("开屏广告正在加载中，跳过重复请求")
+            Logger.info("开屏广告正在加载中，跳过重复请求", category: .adSlot)
             return
         }
         
+        // 获取动态广告位ID
+        guard let adSlotId = AdSlotManager.shared.getCurrentSplashAdSlotId() else {
+            let errorMsg = "未找到开屏广告位ID"
+            Logger.warning(errorMsg, category: .adSlot)
+            let error = NSError(domain: "SplashAdManager", code: -3, userInfo: [NSLocalizedDescriptionKey: errorMsg])
+            completion?(.failure(error))
+            return
+        }
+        
+        currentAdSlotId = adSlotId
+        loadCallback = completion
+        
+        Logger.info("使用广告位ID: \(adSlotId)", category: .adSlot)
+        
         isLoading = true
+        isAdReady = false
         
-        // 创建广告位配置
         let slot = BUAdSlot()
-        slot.id = adSlotID
+        slot.id = adSlotId
         
-        // 创建开屏广告
         splashAd = BUSplashAd(slot: slot, adSize: UIScreen.main.bounds.size)
         splashAd?.delegate = self
-        
-        // 开始加载广告
         splashAd?.loadData()
+    }
+    
+    /// 手动展示广告
+    @discardableResult
+    func showSplashAd() -> Bool {
+        guard !isDestroyed else {
+            Logger.warning("广告管理器已销毁，无法展示", category: .adSlot)
+            return false
+        }
+        
+        Logger.info("尝试展示开屏广告...", category: .adSlot)
+        
+        guard canShowAd(), isAdReady, let ad = splashAd else {
+            Logger.warning("无法展示广告 - canShow: \(canShowAd()), isReady: \(isAdReady), hasAd: \(splashAd != nil)", category: .adSlot)
+            return false
+        }
+        
+        guard let rootViewController = UIUtils.findViewController() else {
+            Logger.error("无法获取根视图控制器", category: .adSlot)
+            return false
+        }
+        
+        // 检查当前是否有其他present操作进行中
+        if rootViewController.presentedViewController != nil {
+            Logger.info("当前已有presented的ViewController，延迟展示广告", category: .adSlot)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                _ = self.showSplashAd()
+            }
+            return true
+        }
+        
+        hasShownThisSession = true
+        Logger.info("开始present开屏广告ViewController", category: .adSlot)
+        Logger.info("当前rootViewController: \(type(of: rootViewController))", category: .adSlot)
+        Logger.info("广告位ID: \(currentAdSlotId ?? "未知")", category: .adSlot)
+        
+        ad.showSplashView(inRootViewController: rootViewController)
+        return true
     }
     
     /// 手动销毁广告
     func destroyAd() {
-        print("手动销毁开屏广告")
+        guard !isDestroyed else {
+            Logger.info("广告已被销毁，跳过重复销毁", category: .adSlot)
+            return
+        }
+        
+        Logger.info("手动销毁开屏广告", category: .adSlot)
         splashAd?.mediation?.destoryAd()
         splashAd = nil
-        isLoading = false
+        currentAdSlotId = nil
+        loadCallback = nil
+        eventCallback = nil
+        
+        DispatchQueue.main.async {
+            self.isLoading = false
+            self.isAdReady = false
+        }
+        
+        isDestroyed = true
     }
     
     // MARK: - 私有方法
     
-    /// 获取根视图控制器
-    private func getRootViewController() -> UIViewController? {
-        guard let scene = UIApplication.shared.connectedScenes
-            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene else {
-            return nil
-        }
-        
-        // 获取主窗口
-        guard let window = scene.windows.first(where: \.isKeyWindow) ?? scene.windows.first else {
-            return nil
-        }
-        
-        return window.rootViewController
-    }
-    
-    /// 检查是否可以展示广告
     private func canShowAd() -> Bool {
-        let canShow = shouldShowSplashAd && !hasShownThisSession && isInSplashView
-        
-        if !canShow {
-            print("不能展示开屏广告:")
-            print("- shouldShowSplashAd: \(shouldShowSplashAd)")
-            print("- hasShownThisSession: \(hasShownThisSession)")
-            print("- isInSplashView: \(isInSplashView)")
-        }
-        
-        return canShow
+        return shouldShowSplashAd && !hasShownThisSession && isInSplashView && !isDestroyed
     }
     
-    /// 通知广告事件
-    private func postNotification(_ name: Notification.Name, userInfo: [String: Any]? = nil) {
+    private func notifyEvent(_ event: SplashAdEvent) {
         DispatchQueue.main.async {
-            NotificationCenter.default.post(name: name, object: nil, userInfo: userInfo)
+            self.eventCallback?(event)
+        }
+    }
+    
+    private func executeLoadCallback(_ result: Result<Void, Error>) {
+        DispatchQueue.main.async {
+            self.loadCallback?(result)
+            self.loadCallback = nil
         }
     }
 }
@@ -142,213 +228,156 @@ class SplashAdManager: NSObject, ObservableObject {
 // MARK: - BUSplashAdDelegate
 extension SplashAdManager: BUSplashAdDelegate {
     
-    // 加载成功
     func splashAdLoadSuccess(_ splashAd: BUSplashAd) {
-        print("开屏广告加载成功")
+        Logger.success("开屏广告加载成功，等待手动展示", category: .adSlot)
+        Logger.info("广告位ID: \(currentAdSlotId ?? "未知")", category: .adSlot)
         
         DispatchQueue.main.async {
             self.isLoading = false
+            self.isAdReady = true
         }
         
-        // 再次检查是否可以展示
         guard canShowAd() else {
-            print("加载成功但不满足展示条件，销毁广告")
+            Logger.warning("加载成功但不满足展示条件，销毁广告", category: .adSlot)
+            let error = NSError(domain: "SplashAdManager", code: -4, userInfo: [NSLocalizedDescriptionKey: "展示条件已变化"])
+            executeLoadCallback(.failure(error))
             destroyAd()
-            postNotification(.splashAdLoadFailed, userInfo: ["error": "展示条件已变化"])
             return
         }
         
-        // 获取根视图控制器并显示广告
-        guard let rootViewController = getRootViewController() else {
-            print("无法获取根视图控制器，无法显示广告")
-            postNotification(.splashAdLoadFailed, userInfo: ["error": "无法获取根视图控制器"])
-            return
-        }
-        
-        // 标记即将展示
-        hasShownThisSession = true
-        
-        print("开始显示开屏广告")
-        splashAd.showSplashView(inRootViewController: rootViewController)
-        
-        postNotification(.splashAdLoadSuccess)
+        executeLoadCallback(.success(()))
+        notifyEvent(.loadSuccess)
     }
     
-    // 加载失败
     func splashAdLoadFail(_ splashAd: BUSplashAd, error: BUAdError?) {
         let errorMessage = error?.localizedDescription ?? "未知错误"
-        print("开屏广告加载失败:\(error?.code ?? 0) \(errorMessage)")
+        Logger.error("开屏广告加载失败: \(error?.code ?? 0) \(errorMessage)", category: .adSlot)
+        Logger.info("广告位ID: \(currentAdSlotId ?? "未知")", category: .adSlot)
         
         DispatchQueue.main.async {
             self.isLoading = false
+            self.isAdReady = false
         }
         
-        postNotification(.splashAdLoadFailed, userInfo: ["error": errorMessage])
+        let adError = error ?? BUAdError()
+        executeLoadCallback(.failure(adError))
+        notifyEvent(.loadFailed(adError))
     }
     
-    // 广告即将展示
     func splashAdWillShow(_ splashAd: BUSplashAd) {
-        print("开屏广告即将展示")
+        Logger.info("开屏广告即将展示", category: .adSlot)
+        Logger.info("广告位ID: \(currentAdSlotId ?? "未知")", category: .adSlot)
         
-        // 最后一次检查是否还在启动页
-        guard isInSplashView else {
-            print("已不在启动页，阻止广告展示")
-            splashAd.mediation?.destoryAd()
-            return
+        if !isInSplashView {
+            Logger.warning("广告展示时已不在启动页", category: .adSlot)
         }
         
-        postNotification(.splashAdWillShow)
+        notifyEvent(.willShow)
     }
     
-    // 广告被点击
+    func splashAdDidShow(_ splashAd: BUSplashAd) {
+        Logger.success("开屏广告已展示", category: .adSlot)
+        Logger.info("广告位ID: \(currentAdSlotId ?? "未知")", category: .adSlot)
+        
+        DispatchQueue.main.async {
+            self.hasShown = true
+        }
+        
+        notifyEvent(.didShow)
+    }
+    
     func splashAdDidClick(_ splashAd: BUSplashAd) {
-        print("用户点击了开屏广告")
-        postNotification(.splashAdDidClick)
+        Logger.info("用户点击了开屏广告", category: .adSlot)
+        Logger.info("广告位ID: \(currentAdSlotId ?? "未知")", category: .adSlot)
+        notifyEvent(.clicked)
     }
     
-    // 广告被关闭
     func splashAdDidClose(_ splashAd: BUSplashAd, closeType: BUSplashAdCloseType) {
-        print("开屏广告关闭，关闭类型: \(closeType.rawValue)")
+        Logger.info("开屏广告关闭，关闭类型: \(closeType.rawValue)", category: .adSlot)
+        Logger.info("广告位ID: \(currentAdSlotId ?? "未知")", category: .adSlot)
         
         let closeTypeName: String
         switch closeType {
-        case .clickSkip:
-            closeTypeName = "点击跳过"
-        case .clickAd:
-            closeTypeName = "点击广告"
-        case .countdownToZero:
-            closeTypeName = "倒计时结束"
-        case .unknow:
-            closeTypeName = "未知"
-        case .forceQuit:
-            closeTypeName = "强制退出"
-        @unknown default:
-            closeTypeName = "其他方式"
+        case .clickSkip: closeTypeName = "点击跳过"
+        case .clickAd: closeTypeName = "点击广告"
+        case .countdownToZero: closeTypeName = "倒计时结束"
+        case .unknow: closeTypeName = "未知"
+        case .forceQuit: closeTypeName = "强制退出"
+        @unknown default: closeTypeName = "其他方式"
         }
         
-        print("关闭方式: \(closeTypeName)")
+        Logger.info("关闭方式: \(closeTypeName)", category: .adSlot)
         
-        // 销毁广告对象
+        // 清理广告对象
         splashAd.mediation?.destoryAd()
         self.splashAd = nil
         
         DispatchQueue.main.async {
             self.hasShown = true
             self.isLoading = false
+            self.isAdReady = false
         }
         
-        // 禁用后续展示
         shouldShowSplashAd = false
-        
-        postNotification(.splashAdDidClose, userInfo: ["closeType": closeTypeName])
+        notifyEvent(.closed(closeType: closeTypeName))
     }
     
-    // 广告展示失败
     func splashAdDidShowFailed(_ splashAd: BUSplashAd, error: Error) {
-        let errorMessage = error.localizedDescription
-        print("开屏广告展示失败: \(errorMessage)")
+        Logger.error("开屏广告展示失败: \(error.localizedDescription)", category: .adSlot)
+        Logger.info("广告位ID: \(currentAdSlotId ?? "未知")", category: .adSlot)
         
-        // 销毁广告对象
         splashAd.mediation?.destoryAd()
         self.splashAd = nil
         
         DispatchQueue.main.async {
             self.isLoading = false
+            self.isAdReady = false
         }
         
-        postNotification(.splashAdShowFailed, userInfo: ["error": errorMessage])
+        notifyEvent(.showFailed(error))
     }
     
-    // 广告渲染完成
     func splashAdRenderSuccess(_ splashAd: BUSplashAd) {
-        print("开屏广告渲染完成")
-        postNotification(.splashAdRenderSuccess)
+        Logger.success("开屏广告渲染完成", category: .adSlot)
+        Logger.info("广告位ID: \(currentAdSlotId ?? "未知")", category: .adSlot)
+        notifyEvent(.renderSuccess)
     }
     
-    // 广告渲染失败
     func splashAdRenderFail(_ splashAd: BUSplashAd, error: BUAdError?) {
         let errorMessage = error?.localizedDescription ?? "未知渲染错误"
-        print("开屏广告渲染失败: \(errorMessage)")
-        postNotification(.splashAdRenderFailed, userInfo: ["error": errorMessage])
+        Logger.error("开屏广告渲染失败: \(errorMessage)", category: .adSlot)
+        Logger.info("广告位ID: \(currentAdSlotId ?? "未知")", category: .adSlot)
+        
+        let adError = error ?? BUAdError()
+        notifyEvent(.renderFailed(adError))
     }
     
-    // 广告展示
-    func splashAdDidShow(_ splashAd: BUSplashAd) {
-        print("开屏广告已展示")
-        
-        DispatchQueue.main.async {
-            self.hasShown = true
-        }
-        
-        postNotification(.splashAdDidShow)
-    }
-    
-    // 广告控制器被关闭
     func splashAdViewControllerDidClose(_ splashAd: BUSplashAd) {
-        print("开屏广告控制器被关闭")
-        postNotification(.splashAdViewControllerDidClose)
+        Logger.info("开屏广告控制器被关闭", category: .adSlot)
     }
     
-    // 其他控制器被关闭
     func splashDidCloseOtherController(_ splashAd: BUSplashAd, interactionType: BUInteractionType) {
         let interactionTypeName: String
         switch interactionType {
-        case .custorm:
-            interactionTypeName = "自定义交互"
-        case .URL:
-            interactionTypeName = "浏览器打开网页"
-        case .page:
-            interactionTypeName = "应用内打开网页"
-        case .download:
-            interactionTypeName = "下载应用"
-        case .videoAdDetail:
-            interactionTypeName = "视频广告详情页"
-        case .mediationOthers:
-            interactionTypeName = "聚合其他广告SDK"
-        @unknown default:
-            interactionTypeName = "未知交互类型"
+        case .custorm: interactionTypeName = "自定义交互"
+        case .URL: interactionTypeName = "浏览器打开网页"
+        case .page: interactionTypeName = "应用内打开网页"
+        case .download: interactionTypeName = "下载应用"
+        case .videoAdDetail: interactionTypeName = "视频广告详情页"
+        case .mediationOthers: interactionTypeName = "聚合其他广告SDK"
+        @unknown default: interactionTypeName = "未知交互类型"
         }
         
-        print("其他控制器被关闭，交互类型: \(interactionTypeName)")
-        postNotification(.splashDidCloseOtherController, userInfo: ["interactionType": interactionTypeName])
+        Logger.info("其他控制器被关闭，交互类型: \(interactionTypeName)", category: .adSlot)
     }
     
-    // 视频播放完成
     func splashVideoAdDidPlayFinish(_ splashAd: BUSplashAd, didFailWithError error: Error?) {
         if let error = error {
-            print("开屏视频广告播放失败: \(error.localizedDescription)")
-            postNotification(.splashVideoPlayFailed, userInfo: ["error": error.localizedDescription])
+            Logger.error("开屏视频广告播放失败: \(error.localizedDescription)", category: .adSlot)
+            notifyEvent(.videoPlayFailed(error))
         } else {
-            print("开屏视频广告播放完成")
-            postNotification(.splashVideoPlayFinished)
+            Logger.success("开屏视频广告播放完成", category: .adSlot)
+            notifyEvent(.videoPlayFinished)
         }
     }
-}
-
-// MARK: - 通知名称扩展
-extension Notification.Name {
-    // 加载相关
-    static let splashAdLoadSuccess = Notification.Name("splashAdLoadSuccess")
-    static let splashAdLoadFailed = Notification.Name("splashAdLoadFailed")
-    
-    // 展示相关
-    static let splashAdWillShow = Notification.Name("splashAdWillShow")
-    static let splashAdDidShow = Notification.Name("splashAdDidShow")
-    static let splashAdShowFailed = Notification.Name("splashAdShowFailed")
-    
-    // 渲染相关
-    static let splashAdRenderSuccess = Notification.Name("splashAdRenderSuccess")
-    static let splashAdRenderFailed = Notification.Name("splashAdRenderFailed")
-    
-    // 交互相关
-    static let splashAdDidClick = Notification.Name("splashAdDidClick")
-    static let splashAdDidClose = Notification.Name("splashAdDidClose")
-    
-    // 控制器相关
-    static let splashAdViewControllerDidClose = Notification.Name("splashAdViewControllerDidClose")
-    static let splashDidCloseOtherController = Notification.Name("splashDidCloseOtherController")
-    
-    // 视频相关
-    static let splashVideoPlayFinished = Notification.Name("splashVideoPlayFinished")
-    static let splashVideoPlayFailed = Notification.Name("splashVideoPlayFailed")
 }

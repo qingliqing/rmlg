@@ -9,7 +9,7 @@ import Foundation
 import Combine
 
 /// Ad Slot Manager - 独立管理广告位的获取、缓存和分配
-@MainActor
+
 class AdSlotManager: ObservableObject {
     
     // MARK: - Singleton
