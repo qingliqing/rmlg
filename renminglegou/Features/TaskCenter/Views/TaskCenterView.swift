@@ -65,7 +65,7 @@ struct TaskCenterView: View {
     
     @ViewBuilder
     private var bannerView: some View {
-        BannerAdView(slotId: "103585837")
+        BannerAdView()
             .frame(height: 160)
             .padding(.horizontal)
     }

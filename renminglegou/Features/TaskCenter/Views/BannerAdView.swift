@@ -13,14 +13,15 @@ struct BannerAdView: UIViewRepresentable {
     
     // MARK: - Properties
     @StateObject private var adManager: BannerAdManager
+    let defaultId: String = "103585837"
     let containerSize: CGSize
     let backgroundColor: UIColor
     
     // MARK: - Initialization
-    init(slotId: String = "103585837",
-         containerSize: CGSize = CGSize(width: UIScreen.main.bounds.width - 40, height: 160),
+    init(containerSize: CGSize = CGSize(width: UIScreen.main.bounds.width - 40, height: 160),
          backgroundColor: UIColor = .clear) {
         
+        let slotId = AdSlotManager.shared.getCurrentBannerAdSlotId() ?? defaultId
         self._adManager = StateObject(wrappedValue: BannerAdManager(
             slotId: slotId,
             defaultAdSize: containerSize
