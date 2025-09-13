@@ -131,12 +131,14 @@ struct TaskCenterView: View {
     private var nativeAdSection: some View {
         VStack(spacing: 0) {
             // 信息流广告
-            NativeAdView(slotId: "103509927") { height in
+            NativeAdView { height in
                 DispatchQueue.main.async {
                     nativeAdHeight = height
                 }
             }
             .frame(height: nativeAdHeight)
+            .allowsHitTesting(true)  // 确保可以响应手势
+            .clipped()  // 防止内容超出边界
             .padding(.horizontal, 16)
             .padding(.vertical, 16)
         }
