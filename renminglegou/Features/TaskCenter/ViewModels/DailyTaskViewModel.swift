@@ -173,8 +173,6 @@ final class DailyTaskViewModel: ObservableObject {
     /// 完全独立处理观看完成逻辑
     private func handleAdWatchCompleted() async {
         do {
-            loadingManager.showLoading(style: .pulse)
-            
             // 1. 记录观看时间（开始冷却）
             recordWatchTime()
             
