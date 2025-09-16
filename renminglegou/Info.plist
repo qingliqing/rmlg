@@ -17,6 +17,13 @@
     <string>需要访问相机以便拍摄照片</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>需要访问相册以便选择图片</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>zh-Hans</string>
+        <string>en</string>
+    </array>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>zh-Hans</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>uppaywallet</string>
