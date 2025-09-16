@@ -14,6 +14,9 @@ struct renminglegouApp: App {
     @StateObject private var router = Router.shared
 
     init() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            ATTManager.shared.requestTrackingAuthorization()
+        }
         // 启动所有SDK初始化
         sdkManager.startAllSDKs()
     }
