@@ -93,8 +93,8 @@ struct DailyTaskView: View {
                                 .fill(
                                     LinearGradient(
                                         gradient: Gradient(colors: [
-                                            viewModel.dailyVM.isButtonEnabled ? Color.blue : Color.gray,
-                                            viewModel.dailyVM.isButtonEnabled ? Color.purple : Color.gray.opacity(0.8)
+                                            isButtonEnabled ? Color.blue : Color.gray,
+                                            isButtonEnabled ? Color.purple : Color.gray.opacity(0.8)
                                         ]),
                                         startPoint: .leading,
                                         endPoint: .trailing
@@ -107,12 +107,12 @@ struct DailyTaskView: View {
                         Text(viewModel.dailyVM.buttonText)
                             .font(.system(size: viewModel.dailyVM.cooldownRemaining > 0 ? 20 : 28, weight: .bold))
                             .foregroundStyle(.white)
-                            .opacity(viewModel.dailyVM.isButtonEnabled ? 1.0 : 0.7)
+                            .opacity(isButtonEnabled ? 1.0 : 0.7)
                     }
                 }
-                .disabled(!viewModel.dailyVM.isButtonEnabled)
-                .scaleEffect(viewModel.dailyVM.isButtonEnabled ? 1.0 : 0.95)
-                .animation(.easeInOut(duration: 0.2), value: viewModel.dailyVM.isButtonEnabled)
+                .disabled(!isButtonEnabled)
+                .scaleEffect(isButtonEnabled ? 1.0 : 0.95)
+                .animation(.easeInOut(duration: 0.2), value: isButtonEnabled)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
             }
@@ -125,5 +125,10 @@ struct DailyTaskView: View {
     // 获取每日任务的总数量
     private var maxTaskCount: Int {
         return viewModel.dailyTask?.totalAdCount ?? 5
+    }
+    
+    private var isButtonEnabled: Bool {
+        let totalCount = viewModel.dailyTask?.totalAdCount ?? 5
+        return viewModel.dailyVM.canWatchAd && viewModel.dailyVM.currentViewCount < totalCount
     }
 }

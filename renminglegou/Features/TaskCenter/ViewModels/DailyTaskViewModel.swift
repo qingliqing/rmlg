@@ -69,11 +69,6 @@ final class DailyTaskViewModel: ObservableObject {
         }
     }
     
-    /// 按钮是否可点击
-    var isButtonEnabled: Bool {
-        return canWatchAd
-    }
-    
     /// 检查当前广告位是否已加载
     var isAdReady: Bool {
         return rewardAdManager.isAdReady(for: currentSlotID)
